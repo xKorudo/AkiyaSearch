@@ -132,9 +132,11 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 .map-area { flex: 1; position: relative; }
 #map { width: 100%; height: 100%; }
 
-/* DETAIL PANEL (top-level overlay, slides in from the right) */
-.detail-panel { position: fixed; top: 52px; right: 0; width: 440px; height: calc(100vh - 52px); background: var(--surface); border-left: 1px solid var(--border2); z-index: 9000; transform: translateX(100%); transition: transform .25s ease; overflow-y: auto; }
-.detail-panel.open { transform: translateX(0); }
+/* DETAIL PANEL (centered modal overlay) */
+.detail-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 8999; opacity: 0; pointer-events: none; transition: opacity .2s; }
+.detail-backdrop.open { opacity: 1; pointer-events: all; }
+.detail-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -46%); width: min(560px, 94vw); max-height: 90vh; background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; z-index: 9000; opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease; overflow-y: auto; box-shadow: 0 16px 60px rgba(0,0,0,.6); }
+.detail-panel.open { transform: translate(-50%, -50%); opacity: 1; pointer-events: all; }
 .detail-panel::-webkit-scrollbar { width: 4px; }
 .detail-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 .dp-close { position: sticky; top: 0; z-index: 10; background: var(--surface); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
@@ -391,7 +393,7 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
   .section-map .sidebar { display: none; }   /* split doesn't fit on phones → map only */
 
   /* detail + panels go full-screen on phones */
-  .detail-panel { width: 100%; }
+  .detail-panel { width: 100vw; max-height: 100vh; height: 100%; border-radius: 0; border: none; }
   .yen-panel { width: calc(100% - 24px); right: 12px; left: 12px; }
   .auth-modal { width: calc(100% - 32px); }
 }
@@ -515,7 +517,8 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
   <div id="notif-list"></div>
 </div>
 
-<!-- Detail Panel (top-level overlay so it works in every section) -->
+<!-- Detail Panel (centered modal so it doesn't cover the grid) -->
+<div class="detail-backdrop" id="detail-backdrop" onclick="closeDetail()"></div>
 <div class="detail-panel" id="detail-panel">
   <div class="dp-close">
     <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">PROPERTY DETAIL</span>
@@ -646,6 +649,7 @@ async function initAuth() {
       currentUser = session ? session.user : null;
       updateAuthUI();
     });
+    await handleJoinLink();   // honor ?join=<token> invite links
   }
   updateAuthUI();
 }
@@ -754,6 +758,7 @@ async function submitAuth() {
       renderWatchlists();
       closeAuth();
       showToast('Signed in');
+      await handleJoinLink();   // if they arrived via an invite link, join now
     }
   } catch (err) {
     msg.className = 'auth-msg error'; msg.textContent = err.message || 'Authentication failed.';
@@ -828,11 +833,26 @@ async function removeFromWatchlist(wlId, listingId) {
   await loadWatchlistData(); renderWatchlists();
 }
 
-async function inviteToWatchlist(wlId) {
-  const email = prompt('Invite a friend by email:');
-  if (!email) return;
-  const { error } = await supa.from('watchlist_invites').insert({ watchlist_id: wlId, email: email.trim().toLowerCase(), invited_by: currentUser.id });
-  showToast(error ? 'Invite failed' : `Invited ${email} — they'll join when they sign in`);
+function copyInviteLink(wlId) {
+  const w = WATCHLISTS.find(x => x.id === wlId);
+  if (!w || !w.join_token) { showToast('Invite link unavailable — run the latest SQL'); return; }
+  const link = location.origin + location.pathname + '?join=' + w.join_token;
+  (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject())
+    .then(() => showToast('Invite link copied — send it to a friend!'))
+    .catch(() => prompt('Copy this invite link:', link));
+}
+
+// Join a shared watchlist from an ?join=<token> link
+async function handleJoinLink() {
+  const token = new URLSearchParams(location.search).get('join');
+  if (!token) return;
+  if (!currentUser) { openAuth(); showToast('Sign in to join the shared watchlist'); return; }
+  try {
+    await supa.rpc('join_watchlist', { token });
+    await loadWatchlistData(); renderWatchlists();
+    showToast('Joined the shared watchlist!');
+    history.replaceState({}, '', location.pathname);   // clear the token from the URL
+  } catch { showToast('Invite link invalid or expired'); }
 }
 
 function requireLogin() {
@@ -864,7 +884,7 @@ function renderWatchlists() {
         <span class="wl-name">${w.name}</span>
         <span class="wl-meta">${w.items.length} houses · ${w.memberCount} member${w.memberCount>1?'s':''} ${w.isOwner?'· owner':'· shared'}</span>
         <div class="wl-actions">
-          <button class="hbtn" onclick="inviteToWatchlist('${w.id}')">＋ Invite friend</button>
+          <button class="hbtn" onclick="copyInviteLink('${w.id}')">🔗 Copy invite link</button>
           ${w.isOwner ? `<button class="hbtn" onclick="if(confirm('Delete this watchlist?'))deleteWatchlist('${w.id}')">Delete</button>` : ''}
         </div>
       </div>
@@ -1013,6 +1033,7 @@ async function loadListings() {
       ALL = d.listings || [];
       filter();
       setLoading(false);
+      openDeepLink();   // open a listing if the URL has ?l=<id>
       return;
     } catch { /* try next source */ }
   }
@@ -1231,7 +1252,7 @@ function cardHTML(l) {
   const prefEN = prefToEN(l.prefecture);
 
   return `
-  <div class="lcard ${selectedId===l.id?'selected':''}" onclick="openDetail('${l.id}')">
+  <div class="lcard ${selectedId===l.id?'selected':''}" onclick="cardClick(event,'${l.id}')" onauxclick="cardAux(event,'${l.id}')">
     <div class="lcard-img-wrap">
       ${img}${placeholder}
       <div class="lcard-badges">${badgeFree}${badgeCheap}${badgeAB}</div>
@@ -1286,6 +1307,18 @@ function riskLevel(l) {
   if (score >= 3) return { label: 'Elevated', color: 'var(--accent)' };
   if (score === 2) return { label: 'Moderate', color: 'var(--blue)' };
   return { label: 'Low Risk', color: 'var(--green)' };
+}
+
+// Card click handling: left = open modal; ctrl/cmd = new tab; middle = new tab
+function listingDeepLink(id) { return location.origin + location.pathname + '?l=' + encodeURIComponent(id); }
+function cardClick(e, id) {
+  if (e.ctrlKey || e.metaKey || e.button === 1) { window.open(listingDeepLink(id), '_blank'); return; }
+  openDetail(id);
+}
+function cardAux(e, id) { if (e.button === 1) { e.preventDefault(); window.open(listingDeepLink(id), '_blank'); } }
+function openDeepLink() {
+  const id = new URLSearchParams(location.search).get('l');
+  if (id && listingById(id)) openDetail(id);
 }
 
 // ── DETAIL PANEL ──────────────────────────────────────────────────────────────
@@ -1454,6 +1487,7 @@ function openDetail(id) {
     </div>`;
 
   document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-backdrop').classList.add('open');
 
   if (l.lat && l.lng && map) {
     map.setView([l.lat, l.lng], 12);
@@ -1478,6 +1512,7 @@ function updateInlineCalc(id) {
 
 function closeDetail() {
   document.getElementById('detail-panel').classList.remove('open');
+  document.getElementById('detail-backdrop').classList.remove('open');
   selectedId = null;
 }
 
