@@ -277,6 +277,44 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r); padding: 10px 18px; font-size: 12px; font-family: var(--mono); color: var(--text2); z-index: 9999; transition: transform .2s; pointer-events: none; }
 .toast.show { transform: translateX(-50%) translateY(0); }
 
+/* ── WATCHLISTS ──────────────────────────────────────────────────────────── */
+.watch-view { display: none; width: 100%; overflow-y: auto; padding: 20px; }
+.section-watchlists .sidebar, .section-watchlists .map-area { display: none; }
+.section-watchlists .watch-view { display: block; }
+.watch-empty { text-align: center; color: var(--text3); padding: 40px 16px; }
+.watch-create { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.watch-create input { flex: 1; min-width: 180px; height: 38px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r); padding: 0 12px; color: var(--text); font-family: var(--sans); font-size: 13px; outline: none; }
+.watch-create input:focus { border-color: var(--accent); }
+.wl-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 18px; overflow: hidden; }
+.wl-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.wl-name { font-size: 16px; font-weight: 700; }
+.wl-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+.wl-actions { margin-left: auto; display: flex; gap: 6px; }
+.wl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; padding: 14px; }
+.wl-members { display: flex; gap: 5px; flex-wrap: wrap; padding: 0 16px 12px; }
+.wl-chip { font-size: 10px; font-family: var(--mono); background: var(--surface3); color: var(--text2); padding: 3px 8px; border-radius: 10px; }
+
+/* Add-to-watchlist menu */
+.atw-menu { position: absolute; z-index: 10000; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.6); padding: 6px; min-width: 220px; }
+.atw-item { padding: 9px 10px; border-radius: 5px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.atw-item:hover { background: var(--surface2); }
+.atw-item.checked { color: var(--accent); }
+.atw-new { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 6px; }
+
+/* Notifications */
+.notif-badge { position: absolute; top: -4px; right: -4px; background: var(--red); color: #fff; font-size: 9px; font-weight: 700; min-width: 15px; height: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+.notif-panel { position: fixed; top: 50px; right: 12px; width: 340px; max-height: 70vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.6); z-index: 9500; display: none; }
+.notif-panel.open { display: block; }
+.notif-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 700; }
+.notif-head span { font-size: 10px; font-weight: 600; color: var(--blue); cursor: pointer; }
+.notif-item { display: flex; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.notif-item:hover { background: var(--surface2); }
+.notif-item img { width: 46px; height: 46px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.notif-txt { font-size: 12px; line-height: 1.4; }
+.notif-when { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+.notif-empty { padding: 24px 14px; text-align: center; color: var(--text3); font-size: 12px; }
+@media (max-width: 860px) { .notif-panel { width: calc(100% - 24px); left: 12px; } }
+
 /* ── MAP DISCLAIMER ──────────────────────────────────────────────────────── */
 .map-disclaimer { position: absolute; bottom: 8px; left: 8px; z-index: 600; max-width: 60%;
   background: rgba(18,18,18,.85); border: 1px solid var(--border2); color: var(--text2);
@@ -369,11 +407,13 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
     <a class="nav-link active" id="nav-search" onclick="setSection('search')">🔍 Search</a>
     <a class="nav-link" id="nav-map" onclick="setSection('map')">🗺 Map</a>
     <a class="nav-link" id="nav-saved" onclick="setSection('saved')">♡ Saved <span id="fav-count" class="nav-badge">0</span></a>
+    <a class="nav-link" id="nav-watchlists" onclick="setSection('watchlists')">👁 Watchlists</a>
   </nav>
 
   <div class="header-right">
     <span id="result-count" class="hide-mobile">— listings</span>
     <button class="hbtn hbtn-refresh hide-mobile" onclick="openYen()" title="Yen/EUR Calculator">¥</button>
+    <button class="hbtn" id="notif-btn" onclick="toggleNotifs()" title="Notifications" style="position:relative">🔔<span id="notif-badge" class="notif-badge" style="display:none">0</span></button>
     <button class="hbtn hbtn-refresh" id="login-btn" onclick="openAuth()">Sign in</button>
     <div id="user-chip" style="display:none;align-items:center;gap:8px">
       <span id="user-email" class="hide-mobile" style="font-family:var(--mono);font-size:11px;color:var(--text2)"></span>
@@ -464,6 +504,15 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
     <div id="map"></div>
     <div class="map-disclaimer">📍 Pin locations are approximate (town-level). Open a listing for a Google Maps link to the address.</div>
   </div>
+
+  <!-- WATCHLISTS -->
+  <div class="watch-view" id="watch-view"></div>
+</div>
+
+<!-- NOTIFICATIONS DROPDOWN -->
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-head">Notifications <span id="notif-clear" onclick="markNotifsSeen()">Mark all read</span></div>
+  <div id="notif-list"></div>
 </div>
 
 <!-- Detail Panel (top-level overlay so it works in every section) -->
@@ -588,7 +637,11 @@ async function initAuth() {
   if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
     supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const { data } = await supa.auth.getSession();
-    if (data && data.session) { currentUser = data.session.user; await loadCloudFavs(); }
+    if (data && data.session) {
+      currentUser = data.session.user;
+      await loadCloudFavs();
+      await loadWatchlistData(); await loadNotifs();
+    }
     supa.auth.onAuthStateChange((_e, session) => {
       currentUser = session ? session.user : null;
       updateAuthUI();
@@ -696,7 +749,9 @@ async function submitAuth() {
       if (error) throw error;
       currentUser = data.user;
       await loadCloudFavs();
+      await loadWatchlistData(); await loadNotifs();
       updateAuthUI();
+      renderWatchlists();
       closeAuth();
       showToast('Signed in');
     }
@@ -707,8 +762,213 @@ async function submitAuth() {
 async function signOut() {
   if (supa) await supa.auth.signOut();
   currentUser = null;
+  WATCHLISTS = []; NOTIFS = [];
   updateAuthUI();
+  renderWatchlists();
+  updateNotifBadge();
   showToast('Signed out');
+}
+
+// ── WATCHLISTS + NOTIFICATIONS ────────────────────────────────────────────────
+let WATCHLISTS = [], NOTIFS = [], notifSeenAt = null;
+
+function listingById(id) { return ALL.find(l => l.id === id); }
+
+async function loadWatchlistData() {
+  if (!supa || !currentUser) { WATCHLISTS = []; return; }
+  try {
+    await acceptPendingInvites();
+    const { data: wls } = await supa.from('watchlists').select('*').order('created_at');
+    const ids = (wls || []).map(w => w.id);
+    let items = [], members = [];
+    if (ids.length) {
+      const it = await supa.from('watchlist_items').select('*').in('watchlist_id', ids);
+      const mb = await supa.from('watchlist_members').select('watchlist_id,user_id,role').in('watchlist_id', ids);
+      items = it.data || []; members = mb.data || [];
+    }
+    WATCHLISTS = (wls || []).map(w => ({
+      ...w,
+      isOwner: w.owner_id === currentUser.id,
+      items: items.filter(i => i.watchlist_id === w.id).map(i => i.listing_id),
+      memberCount: members.filter(m => m.watchlist_id === w.id).length || 1,
+    }));
+  } catch (e) { console.warn('watchlist load', e); WATCHLISTS = []; }
+}
+
+async function acceptPendingInvites() {
+  try {
+    const email = currentUser.email;
+    const { data: invites } = await supa.from('watchlist_invites').select('*').eq('email', email);
+    for (const inv of (invites || [])) {
+      await supa.from('watchlist_members').insert({ watchlist_id: inv.watchlist_id, user_id: currentUser.id, role: 'member' });
+      await supa.from('watchlist_invites').delete().eq('id', inv.id);
+    }
+  } catch { /* ignore */ }
+}
+
+async function createWatchlist(name) {
+  if (!requireLogin()) return;
+  const { data, error } = await supa.from('watchlists').insert({ owner_id: currentUser.id, name: name || 'My Watchlist' }).select().single();
+  if (error) { showToast('Could not create list'); return; }
+  await supa.from('watchlist_members').insert({ watchlist_id: data.id, user_id: currentUser.id, role: 'owner' });
+  await loadWatchlistData(); renderWatchlists();
+}
+
+async function deleteWatchlist(id) {
+  await supa.from('watchlists').delete().eq('id', id);
+  await loadWatchlistData(); renderWatchlists();
+}
+
+async function addToWatchlist(wlId, listingId) {
+  await supa.from('watchlist_items').upsert({ watchlist_id: wlId, listing_id: listingId, added_by: currentUser.id });
+  await loadWatchlistData();
+}
+async function removeFromWatchlist(wlId, listingId) {
+  await supa.from('watchlist_items').delete().eq('watchlist_id', wlId).eq('listing_id', listingId);
+  await loadWatchlistData(); renderWatchlists();
+}
+
+async function inviteToWatchlist(wlId) {
+  const email = prompt('Invite a friend by email:');
+  if (!email) return;
+  const { error } = await supa.from('watchlist_invites').insert({ watchlist_id: wlId, email: email.trim().toLowerCase(), invited_by: currentUser.id });
+  showToast(error ? 'Invite failed' : `Invited ${email} — they'll join when they sign in`);
+}
+
+function requireLogin() {
+  if (!currentUser) { openAuth(); showToast('Sign in to use watchlists'); return false; }
+  return true;
+}
+
+// ── render watchlists section ──
+function renderWatchlists() {
+  const el = document.getElementById('watch-view');
+  if (!el) return;
+  if (!currentUser) {
+    el.innerHTML = `<div class="watch-empty"><div class="empty-jp" style="font-size:48px">観</div>
+      <p style="margin:12px 0">Sign in to create watchlists, share them with friends, and get notified on price changes & sales.</p>
+      <button class="auth-submit" style="max-width:200px;margin:0 auto" onclick="openAuth()">Sign in</button></div>`;
+    return;
+  }
+  let html = `<div class="watch-create">
+      <input id="new-wl-name" placeholder="New watchlist name…" onkeydown="if(event.key==='Enter')createWatchlist(this.value)">
+      <button class="hbtn active" onclick="createWatchlist(document.getElementById('new-wl-name').value)">+ Create watchlist</button>
+    </div>`;
+  if (!WATCHLISTS.length) {
+    html += `<div class="watch-empty">No watchlists yet. Create one above, then add houses with the “👁 Watch” button on any listing.</div>`;
+  }
+  for (const w of WATCHLISTS) {
+    const cards = w.items.map(id => { const l = listingById(id); return l ? wlCardHTML(w.id, l) : ''; }).join('');
+    html += `<div class="wl-card">
+      <div class="wl-head">
+        <span class="wl-name">${w.name}</span>
+        <span class="wl-meta">${w.items.length} houses · ${w.memberCount} member${w.memberCount>1?'s':''} ${w.isOwner?'· owner':'· shared'}</span>
+        <div class="wl-actions">
+          <button class="hbtn" onclick="inviteToWatchlist('${w.id}')">＋ Invite friend</button>
+          ${w.isOwner ? `<button class="hbtn" onclick="if(confirm('Delete this watchlist?'))deleteWatchlist('${w.id}')">Delete</button>` : ''}
+        </div>
+      </div>
+      ${w.items.length ? `<div class="wl-grid">${cards}</div>` : `<div class="watch-empty" style="padding:20px">No houses yet — open a listing and tap “👁 Watch”.</div>`}
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+function wlCardHTML(wlId, l) {
+  const img = l.image_url ? `<img src="${l.image_url}" style="width:100%;height:120px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">` : '';
+  return `<div style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer" onclick="openDetail('${l.id}')">
+    ${img}
+    <div style="font-size:10px;color:var(--accent);font-family:var(--mono);margin-top:6px">${prefToEN(l.prefecture)}${l.city?' · '+l.city:''}</div>
+    <div style="font-size:13px;font-weight:600;margin:3px 0;line-height:1.3">${(l.title_en||l.title||'').slice(0,60)}</div>
+    <div style="font-family:var(--mono);color:var(--accent2);font-size:14px">${l.price_jpy?fmtYen(l.price_jpy):'要問合せ'}${l.price_jpy&&userCurrency!=='JPY'?` · ${convPrice(l.price_jpy)}`:''}</div>
+    <button class="hbtn" style="margin-top:8px;width:100%" onclick="event.stopPropagation();removeFromWatchlist('${wlId}','${l.id}')">Remove</button>
+  </div>`;
+}
+
+// ── add-to-watchlist menu ──
+function openAddToWatchlist(listingId, anchor) {
+  if (!requireLogin()) return;
+  document.querySelector('.atw-menu')?.remove();
+  const menu = document.createElement('div');
+  menu.className = 'atw-menu';
+  const rows = WATCHLISTS.map(w => {
+    const inIt = w.items.includes(listingId);
+    return `<div class="atw-item ${inIt?'checked':''}" onclick="atwToggle('${w.id}','${listingId}',this)">${inIt?'☑':'☐'} ${w.name}</div>`;
+  }).join('') || '<div style="padding:8px;color:var(--text3);font-size:12px">No watchlists yet</div>';
+  menu.innerHTML = rows + `<div class="atw-item atw-new" onclick="atwCreate('${listingId}')">＋ New watchlist…</div>`;
+  document.body.appendChild(menu);
+  const r = anchor.getBoundingClientRect();
+  menu.style.top = (r.bottom + 6) + 'px';
+  menu.style.left = Math.min(r.left, window.innerWidth - 240) + 'px';
+  setTimeout(() => document.addEventListener('click', _atwClose, { once: true }), 0);
+}
+function _atwClose(e) { if (!e.target.closest('.atw-menu')) document.querySelector('.atw-menu')?.remove(); }
+async function atwToggle(wlId, listingId, el) {
+  const w = WATCHLISTS.find(x => x.id === wlId);
+  const inIt = w.items.includes(listingId);
+  if (inIt) await removeFromWatchlist(wlId, listingId); else await addToWatchlist(wlId, listingId);
+  el.classList.toggle('checked'); el.textContent = (inIt?'☐':'☑') + ' ' + w.name;
+  showToast(inIt ? 'Removed from ' + w.name : 'Added to ' + w.name);
+}
+async function atwCreate(listingId) {
+  const name = prompt('New watchlist name:'); if (!name) return;
+  await createWatchlist(name);
+  const w = WATCHLISTS[WATCHLISTS.length - 1];
+  if (w) await atwAdd(w.id, listingId);
+  document.querySelector('.atw-menu')?.remove();
+}
+async function atwAdd(wlId, listingId) { await addToWatchlist(wlId, listingId); showToast('Added'); }
+
+// ── notifications ──
+async function loadNotifs() {
+  if (!supa || !currentUser) { NOTIFS = []; updateNotifBadge(); return; }
+  try {
+    const { data: st } = await supa.from('user_state').select('notifications_seen_at').eq('user_id', currentUser.id).maybeSingle();
+    notifSeenAt = st ? st.notifications_seen_at : '1970-01-01';
+    const watched = [...new Set(WATCHLISTS.flatMap(w => w.items))];
+    if (!watched.length) { NOTIFS = []; updateNotifBadge(); return; }
+    const { data } = await supa.from('listing_changes').select('*').in('listing_id', watched).order('created_at', { ascending: false }).limit(50);
+    NOTIFS = data || [];
+    updateNotifBadge();
+  } catch { NOTIFS = []; updateNotifBadge(); }
+}
+function unreadCount() { return NOTIFS.filter(n => !notifSeenAt || n.created_at > notifSeenAt).length; }
+function updateNotifBadge() {
+  const b = document.getElementById('notif-badge'); if (!b) return;
+  const n = unreadCount();
+  b.textContent = n; b.style.display = n > 0 ? 'flex' : 'none';
+}
+function toggleNotifs() {
+  const p = document.getElementById('notif-panel');
+  const opening = !p.classList.contains('open');
+  p.classList.toggle('open', opening);
+  if (opening) renderNotifs();
+}
+function renderNotifs() {
+  const el = document.getElementById('notif-list');
+  if (!currentUser) { el.innerHTML = `<div class="notif-empty">Sign in to get price & sale alerts on your watchlists.</div>`; return; }
+  if (!NOTIFS.length) { el.innerHTML = `<div class="notif-empty">No alerts yet. Add houses to a watchlist — you'll be notified here on price changes or when one sells.</div>`; return; }
+  el.innerHTML = NOTIFS.map(n => {
+    const l = listingById(n.listing_id);
+    const img = l && l.image_url ? `<img src="${l.image_url}" onerror="this.style.display='none'">` : '';
+    const title = l ? (l.title_en || l.title) : 'A watched house';
+    let msg;
+    if (n.type === 'sold') msg = `🏠 <b>Sold / delisted</b>`;
+    else if (n.type === 'price_drop') msg = `📉 <b>Price drop</b> ${fmtYen(n.old_price)} → ${fmtYen(n.new_price)}`;
+    else msg = `📈 <b>Price rise</b> ${fmtYen(n.old_price)} → ${fmtYen(n.new_price)}`;
+    const unread = !notifSeenAt || n.created_at > notifSeenAt;
+    return `<div class="notif-item" style="${unread?'background:rgba(232,160,32,.06)':''}" onclick="${l?`openDetail('${n.listing_id}');toggleNotifs()`:''}">
+      ${img}
+      <div><div class="notif-txt">${msg}<br>${(title||'').slice(0,50)}</div>
+      <div class="notif-when">${new Date(n.created_at).toLocaleDateString()}</div></div>
+    </div>`;
+  }).join('');
+}
+async function markNotifsSeen() {
+  if (!supa || !currentUser) return;
+  const now = new Date().toISOString();
+  await supa.from('user_state').upsert({ user_id: currentUser.id, notifications_seen_at: now });
+  notifSeenAt = now; updateNotifBadge(); renderNotifs();
 }
 
 function initMap() {
@@ -1122,7 +1382,10 @@ function openDetail(id) {
       <a href="${gmapsUrl(l)}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--blue);text-decoration:none;margin-bottom:8px">📍 Open address in Google Maps</a>
       <div class="dp-title">${l.title_en || l.title}</div>
       ${l.title_en ? `<div style="font-family:var(--jp);font-size:12px;color:var(--text3);margin-bottom:12px">${l.title}</div>` : ''}
-      <div style="margin-bottom:12px"><button class="dp-fav-btn ${isFav(l.id)?'on':''}" onclick="toggleFav('${l.id}',this)">${isFav(l.id)?'♥ Saved':'♡ Save to favorites'}</button></div>
+      <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="dp-fav-btn ${isFav(l.id)?'on':''}" onclick="toggleFav('${l.id}',this)">${isFav(l.id)?'♥ Saved':'♡ Save to favorites'}</button>
+        <button class="dp-fav-btn" onclick="openAddToWatchlist('${l.id}', this)">👁 Watch</button>
+      </div>
       <div class="dp-price-block">${priceBlock}</div>
       <div class="dp-specs-grid">${specs}</div>
 
@@ -1283,7 +1546,7 @@ function renderMarkers() {
 // Sections: 'search' (card grid), 'map' (split: list + map), 'saved' (favorites grid)
 function setSection(s) {
   activeView = s;
-  ['search','map','saved'].forEach(id => document.getElementById('nav-'+id)?.classList.remove('active'));
+  ['search','map','saved','watchlists'].forEach(id => document.getElementById('nav-'+id)?.classList.remove('active'));
   document.getElementById('nav-'+s)?.classList.add('active');
 
   // 'saved' filters the grid to favorites; map shows everything
@@ -1293,7 +1556,8 @@ function setSection(s) {
   document.getElementById('main').className = 'main section-' + s;
 
   closeMobileNav();
-  filter();
+  if (s === 'watchlists') renderWatchlists();
+  else filter();
   setTimeout(() => map?.invalidateSize(), 80);
 }
 
