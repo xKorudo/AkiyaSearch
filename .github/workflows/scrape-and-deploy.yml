@@ -1,0 +1,63 @@
+name: Scrape & Deploy
+
+# Recurring cloud scrape: runs the Python pipeline on a schedule, rebuilds the
+# static snapshot, and deploys it to Cloudflare Pages — no server needed.
+#
+# NOTE: GitHub's runners use datacenter IPs, which SUUMO throttles more than a
+# home IP. The scraper's early-bail handles this gracefully: each run grabs what
+# it can, and the incremental design accumulates coverage over successive runs.
+
+on:
+  schedule:
+    - cron: "0 18 * * *"     # daily at 18:00 UTC (~03:00 JST). Adjust as you like.
+  workflow_dispatch: {}        # adds a "Run workflow" button for manual runs
+
+permissions:
+  contents: read
+
+concurrency:                   # never let two scrapes overlap
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Persist the listings DB between scheduled runs so coverage accumulates.
+      # (If the cache is ever evicted, the next run just starts fresh — the data
+      # is re-scrapeable and user favorites live in Supabase, not here.)
+      - name: Restore listings DB
+        uses: actions/cache@v4
+        with:
+          path: akiya_v4.db
+          key: akiya-db-${{ github.run_id }}
+          restore-keys: |
+            akiya-db-
+
+      - name: Scrape (incremental)
+        run: python run_pipeline.py
+
+      - name: Backfill a batch of detail-page photos
+        run: python enrich_images.py 60
+        continue-on-error: true
+
+      - name: Build static snapshot
+        run: python export_static.py
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public --project-name=akiya-finder
