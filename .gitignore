@@ -17,3 +17,6 @@ Thumbs.db
 # Node (wrangler)
 node_modules/
 .wrangler/
+
+# Claude Code local files
+.claude/

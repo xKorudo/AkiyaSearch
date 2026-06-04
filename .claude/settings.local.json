@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(Remove-Item \"C:\\\\Users\\\\theha\\\\Desktop\\\\Coding Projekte\\\\AkiyaHouses\\\\akiya_v4.db\")",
-      "PowerShell(Get-Process python -ErrorAction SilentlyContinue)",
-      "PowerShell(Stop-Process -Force)"
-    ]
-  }
-}
