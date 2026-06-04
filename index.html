@@ -72,6 +72,10 @@ header { height: 52px; background: var(--surface); border-bottom: 1px solid var(
 select { height: 32px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r); padding: 0 8px; font-family: var(--sans); font-size: 11px; color: var(--text2); outline: none; cursor: pointer; }
 select:focus { border-color: var(--accent); }
 .toolbar-sep { width: 1px; height: 20px; background: var(--border2); }
+.price-range { display: flex; align-items: center; gap: 5px; }
+.price-range .cur-sym { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.price-range input { width: 78px; height: 32px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r); padding: 0 8px; font-family: var(--mono); font-size: 12px; color: var(--text); outline: none; }
+.price-range input:focus { border-color: var(--accent); }
 .filter-tags { display: flex; gap: 6px; }
 .ftag { padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2); background: none; font-family: var(--sans); font-size: 10px; font-weight: 600; color: var(--text3); cursor: pointer; letter-spacing: 0.04em; transition: all .15s; }
 .ftag:hover { border-color: var(--accent); color: var(--accent); }
@@ -489,10 +493,17 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
     <button class="ftag" data-tag="airbnb" onclick="toggleTag(this,'airbnb')">AIRBNB 70+</button>
   </div>
   <div class="toolbar-sep"></div>
-  <div style="display:flex;align-items:center;gap:6px;">
-    <label style="font-size:10px;color:var(--text3);font-family:var(--mono)">MAX ¥</label>
-    <input type="range" id="price-range" min="0" max="50000000" step="500000" value="50000000" oninput="updatePriceLabel();filter()">
-    <span id="price-label" style="font-family:var(--mono);font-size:10px;color:var(--accent);min-width:55px">All</span>
+  <select id="seismic-select" onchange="filter()" title="Seismic standard / earthquake risk">
+    <option value="">Any seismic</option>
+    <option value="Low">🛡 Low risk (2000+ code)</option>
+    <option value="Moderate">Moderate (1981–2000)</option>
+    <option value="High">⚠ High risk (pre-1981)</option>
+  </select>
+  <div class="price-range">
+    <span class="cur-sym">€</span>
+    <input type="number" id="price-min" placeholder="From" min="0" oninput="filter()">
+    <span style="color:var(--text3)">–</span>
+    <input type="number" id="price-max" placeholder="Till" min="0" oninput="filter()">
   </div>
 </div>
 
@@ -623,6 +634,7 @@ function gmapsUrl(l) {
 function setCurrency(c) {
   userCurrency = c;
   localStorage.setItem('akiya_currency', c);
+  document.querySelectorAll('.cur-sym').forEach(s => s.textContent = CUR_SYMBOL[c]);
   filter();                       // re-render cards + map markers with new currency
   if (selectedId) openDetail(selectedId);  // refresh open detail panel
 }
@@ -635,6 +647,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initAuth();
   const curSel = document.getElementById('currency-select');
   if (curSel) curSel.value = userCurrency;
+  document.querySelectorAll('.cur-sym').forEach(s => s.textContent = CUR_SYMBOL[userCurrency]);
   setSection('search');   // default to the card-grid view
 });
 
@@ -948,9 +961,15 @@ function openAddToWatchlist(listingId, anchor) {
   const r = anchor.getBoundingClientRect();
   menu.style.top = (r.bottom + 6) + 'px';
   menu.style.left = Math.min(r.left, window.innerWidth - 240) + 'px';
-  setTimeout(() => document.addEventListener('click', _atwClose, { once: true }), 0);
+  setTimeout(() => document.addEventListener('click', _atwClose), 0);
 }
-function _atwClose(e) { if (!e.target.closest('.atw-menu')) document.querySelector('.atw-menu')?.remove(); }
+function _atwClose(e) {
+  // Close only on a click OUTSIDE the menu; keep listening while interacting inside.
+  if (!e.target.closest('.atw-menu')) {
+    document.querySelector('.atw-menu')?.remove();
+    document.removeEventListener('click', _atwClose);
+  }
+}
 async function atwToggle(wlId, listingId, el) {
   const w = WATCHLISTS.find(x => x.id === wlId);
   const inIt = w.items.includes(listingId);
@@ -1185,12 +1204,18 @@ function filter() {
   const q = document.getElementById('q').value.toLowerCase();
   const pref = document.getElementById('pref-select').value;
   const sort = document.getElementById('sort-select').value;
-  const maxPrice = parseInt(document.getElementById('price-range').value);
+  const seismic = document.getElementById('seismic-select').value;
+  const pMin = parseFloat(document.getElementById('price-min').value);   // in user currency
+  const pMax = parseFloat(document.getElementById('price-max').value);
+  const inCur = jpy => (jpy == null ? null : (userCurrency === 'JPY' ? jpy : jpy * FX[userCurrency]));
 
   FILTERED = ALL.filter(l => {
     if (favView && !FAVS.has(l.id)) return false;
     if (pref && !((l.prefecture||'')+(l.city||'')).includes(pref)) return false;
-    if (maxPrice < 50000000 && l.price_jpy != null && l.price_jpy > maxPrice) return false;
+    if (seismic && seismicInfo(l.built_year).risk !== seismic) return false;
+    const cur = inCur(l.price_jpy);
+    if (!isNaN(pMin)) { if (cur == null || cur < pMin) return false; }
+    if (!isNaN(pMax)) { if (cur == null || cur > pMax) return false; }
     if (activeTags.has('free') && l.price_jpy !== 0) return false;
     if (activeTags.has('airbnb') && calcAirbnb(l) < 70) return false;
     const txt = ((l.title||'')+(l.description||'')+(l.tags||[]).join(' ')).toLowerCase();
