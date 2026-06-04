@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Install Playwright browser (for WAF-protected sources)
+        run: python -m playwright install --with-deps chromium
+
       # Persist the listings DB between scheduled runs so coverage accumulates.
       # (If the cache is ever evicted, the next run just starts fresh — the data
       # is re-scrapeable and user favorites live in Supabase, not here.)
