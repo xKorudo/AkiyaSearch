@@ -29,6 +29,11 @@ def index():
     return send_from_directory(ROOT, "index.html")
 
 
+@app.route("/listing.html")
+def listing_page():
+    return send_from_directory(ROOT, "listing.html")
+
+
 @app.route("/api/listings")
 def listings():
     rows = fetch()

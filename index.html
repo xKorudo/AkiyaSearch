@@ -1252,7 +1252,7 @@ function cardHTML(l) {
   const prefEN = prefToEN(l.prefecture);
 
   return `
-  <a class="lcard ${selectedId===l.id?'selected':''}" href="?l=${encodeURIComponent(l.id)}" onclick="return cardClick(event,'${l.id}')">
+  <a class="lcard ${selectedId===l.id?'selected':''}" href="listing.html?id=${encodeURIComponent(l.id)}" onclick="return cardClick(event,'${l.id}')">
     <div class="lcard-img-wrap">
       ${img}${placeholder}
       <div class="lcard-badges">${badgeFree}${badgeCheap}${badgeAB}</div>

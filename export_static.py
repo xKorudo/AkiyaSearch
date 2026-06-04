@@ -49,6 +49,7 @@ def main():
         json.dump({"count": len(listings), "listings": listings}, f, ensure_ascii=False)
 
     shutil.copyfile(os.path.join(ROOT, "index.html"), os.path.join(OUT, "index.html"))
+    shutil.copyfile(os.path.join(ROOT, "listing.html"), os.path.join(OUT, "listing.html"))
 
     print(f"Wrote {len(listings)} listings to {OUT}\\listings.json")
     print(f"Copied index.html to {OUT}\\index.html")

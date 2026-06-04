@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Akiya Finder — Listing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--bg:#0e0e0e;--surface:#161616;--surface2:#1e1e1e;--surface3:#252525;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.14);--text:#e8e8e4;--text2:#9a9a90;--text3:#585850;--accent:#e8a020;--accent2:#f0c060;--green:#3ecf8e;--red:#f05050;--blue:#5090f0;--purple:#a060f0;--mono:'IBM Plex Mono',monospace;--sans:'Syne',sans-serif;--jp:'Noto Serif JP',serif;--r:6px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;}
+a{color:var(--blue);}
+header{height:52px;background:var(--surface);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:100;}
+.logo{font-size:15px;font-weight:700;color:var(--text);text-decoration:none;}
+.logo span{color:var(--accent);}
+.logo-jp{font-family:var(--jp);font-weight:300;color:var(--text3);font-size:13px;}
+.back{margin-left:auto;font-size:13px;color:var(--text2);text-decoration:none;}
+.back:hover{color:var(--accent);}
+.wrap{max-width:860px;margin:0 auto;padding:24px 20px 60px;}
+.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px;}
+.gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;cursor:zoom-in;}
+.gallery .main{grid-column:span 3;aspect-ratio:16/9;}
+.ph{width:100%;aspect-ratio:16/9;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-family:var(--jp);font-size:64px;color:var(--border2);border-radius:8px;margin-bottom:20px;}
+.loc{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;}
+h1{font-size:26px;font-weight:700;line-height:1.3;margin:6px 0;}
+.jp{font-family:var(--jp);color:var(--text3);font-size:14px;margin-bottom:14px;}
+.gmaps{display:inline-flex;gap:6px;font-size:13px;color:var(--blue);text-decoration:none;margin-bottom:16px;}
+.price-block{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:16px;margin-bottom:20px;}
+.price-jpy{font-family:var(--mono);font-size:26px;color:var(--accent2);}
+.price-conv{font-family:var(--mono);font-size:16px;color:var(--text2);margin-left:10px;}
+.price-note{font-size:12px;color:var(--text3);margin-top:4px;}
+.specs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px;}
+.spec{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;}
+.spec-l{font-size:11px;color:var(--text2);font-family:var(--mono);text-transform:uppercase;margin-bottom:4px;}
+.spec-v{font-size:16px;font-weight:600;}
+.sec-title{font-size:13px;font-weight:700;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin:28px 0 12px;padding-top:18px;border-top:1px solid var(--border);}
+.card{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:16px;margin-bottom:16px;}
+.two{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+.two>div{flex:1;min-width:140px;background:var(--surface3);border-radius:6px;padding:12px;}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.metric-l{font-size:11px;color:var(--text2);font-family:var(--mono);}
+.metric-v{font-size:16px;font-weight:600;font-family:var(--mono);}
+.note{background:var(--surface3);border-left:3px solid var(--accent);border-radius:4px;padding:10px 12px;font-size:13px;line-height:1.55;color:var(--text);margin-bottom:14px;}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.pc>div{background:var(--surface3);border-radius:6px;padding:12px;}
+.pc-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;}
+.point{font-size:13px;color:var(--text);line-height:1.55;margin-bottom:4px;}
+.desc{font-size:14px;line-height:1.7;color:var(--text2);margin-bottom:8px;}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;}
+.btn{flex:1;min-width:160px;padding:12px;text-align:center;border-radius:var(--r);text-decoration:none;font-weight:700;font-size:14px;}
+.btn-p{background:var(--accent);color:#000;}
+.btn-s{background:var(--surface2);border:1px solid var(--border2);color:var(--text2);}
+#map{height:240px;border-radius:8px;margin-bottom:8px;}
+.lb{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:none;align-items:center;justify-content:center;}
+.lb.open{display:flex;}
+.lb img{max-width:92vw;max-height:88vh;object-fit:contain;border-radius:4px;}
+.lb-x{position:absolute;top:16px;right:22px;color:#fff;font-size:30px;cursor:pointer;}
+.lb-n{position:absolute;top:50%;transform:translateY(-50%);color:#fff;font-size:40px;cursor:pointer;padding:14px;opacity:.7;}
+.lb-n:hover{opacity:1;}
+@media(max-width:680px){.specs{grid-template-columns:1fr 1fr;}.gallery{grid-template-columns:1fr 1fr;}h1{font-size:21px;}}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="./">🏚 <span>Akiya</span> Finder <span class="logo-jp">空き家</span></a>
+  <a class="back" href="./">← All listings</a>
+</header>
+<div class="wrap" id="wrap"><div style="color:var(--text3);padding:40px 0">Loading…</div></div>
+
+<div class="lb" id="lb" onclick="if(event.target.id==='lb')lbClose()">
+  <span class="lb-x" onclick="lbClose()">✕</span>
+  <span class="lb-n" style="left:8px" onclick="lbNav(-1)">‹</span>
+  <img id="lb-img" src="">
+  <span class="lb-n" style="right:8px" onclick="lbNav(1)">›</span>
+</div>
+
+<script>
+const CUR_SYMBOL={EUR:'€',USD:'$',GBP:'£',AUD:'A$',JPY:'¥'};
+let FX={EUR:.0062,USD:.0067,GBP:.0053,AUD:.0103};
+let userCurrency=localStorage.getItem('akiya_currency')||'EUR';
+const PREF_EN={'北海道':'Hokkaido','青森':'Aomori','岩手':'Iwate','宮城':'Miyagi','秋田':'Akita','山形':'Yamagata','福島':'Fukushima','茨城':'Ibaraki','栃木':'Tochigi','群馬':'Gunma','埼玉':'Saitama','千葉':'Chiba','東京':'Tokyo','神奈川':'Kanagawa','新潟':'Niigata','富山':'Toyama','石川':'Ishikawa','福井':'Fukui','山梨':'Yamanashi','長野':'Nagano','岐阜':'Gifu','静岡':'Shizuoka','愛知':'Aichi','三重':'Mie','滋賀':'Shiga','京都':'Kyoto','大阪':'Osaka','兵庫':'Hyogo','奈良':'Nara','和歌山':'Wakayama','鳥取':'Tottori','島根':'Shimane','岡山':'Okayama','広島':'Hiroshima','山口':'Yamaguchi','徳島':'Tokushima','香川':'Kagawa','愛媛':'Ehime','高知':'Kochi','福岡':'Fukuoka','佐賀':'Saga','長崎':'Nagasaki','熊本':'Kumamoto','大分':'Oita','宮崎':'Miyazaki','鹿児島':'Kagoshima','沖縄':'Okinawa'};
+const COND_EN={'要リフォーム':'Needs renovation','要修繕':'Needs repair','要大規模修繕':'Major repairs needed','リノベーション済み':'Renovated','良好':'Good condition','普通':'Fair condition','要確認':'Condition unknown','古民家':'Traditional kominka'};
+const AIRBNB_TOURISM={'沖縄':90,'京都':88,'大阪':82,'北海道':80,'東京':78,'広島':75,'長野':72,'山梨':70,'静岡':68,'福岡':67,'奈良':65,'鹿児島':63,'愛媛':62,'高知':60,'新潟':58,'岩手':55,'秋田':54,'島根':52,'鳥取':50,'宮崎':58};
+const prefToEN=p=>PREF_EN[p]||p||'Japan';
+const conditionEN=c=>COND_EN[c]||c||'';
+function fmtYen(j){if(j>=1e8)return'¥'+(j/1e8).toLocaleString('de-DE',{maximumFractionDigits:1})+' Mrd.';if(j>=1e7)return'¥'+(j/1e6).toLocaleString('de-DE',{maximumFractionDigits:1})+' Mio.';if(j>=1e6)return'¥'+(j/1e6).toLocaleString('de-DE',{maximumFractionDigits:2})+' Mio.';return'¥'+j.toLocaleString('de-DE');}
+function convPrice(j){if(j==null)return'';if(userCurrency==='JPY')return'¥'+Math.round(j).toLocaleString('de-DE');return CUR_SYMBOL[userCurrency]+Math.round(j*FX[userCurrency]).toLocaleString('de-DE');}
+function gmapsUrl(l){return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((l.prefecture||'')+(l.city||'')+' 日本');}
+function bigImg(u){return u&&(u.includes('resizeImage')||u.includes('w='))?u.replace(/([?&])w=\d+/i,'$1w=1200').replace(/([?&])h=\d+/i,'$1h=900'):u;}
+function calcAirbnb(l){let s=50;const t=((l.title||'')+(l.description||'')).toLowerCase();const to=AIRBNB_TOURISM[l.prefecture]||45;s=s*.3+to*.7;if(/海|ocean|beach|sea|coast/.test(t))s+=12;if(/富士|fuji|ski|スキー|温泉|onsen/.test(t))s+=10;if(/古民家|kominka|町家/.test(t))s+=8;if(/リノベ|renovated|良好/.test(t))s+=9;if(/大規模修繕/.test(t))s-=18;if(l.size_m2>=100)s+=8;if(l.size_m2>=150)s+=5;if(l.price_jpy===0)s+=15;else if(l.price_jpy<1e6)s+=12;else if(l.price_jpy<3e6)s+=7;else if(l.price_jpy>=8e6)s-=3;if(l.built_year&&l.built_year<1960)s-=5;if(l.built_year&&l.built_year>1990)s+=4;return Math.min(99,Math.max(5,Math.round(s)));}
+function airbnbColor(s){return s>=75?'var(--green)':s>=55?'var(--accent)':s>=35?'var(--blue)':'var(--text3)';}
+function seismicInfo(y){if(!y)return{era:'Unknown',label:'Build year unknown',color:'var(--text3)',risk:'Unknown',note:'No construction year on record — verify the seismic standard before buying.'};if(y<1981)return{era:'旧耐震 (Pre-1981)',label:'Old seismic standard',color:'var(--red)',risk:'High',note:'Built before the 1981 earthquake code. May need seismic retrofitting; can be harder to insure/finance.'};if(y<2000)return{era:'新耐震 (1981–2000)',label:'New seismic standard (1981)',color:'var(--accent)',risk:'Moderate',note:'Meets the 1981 earthquake code. Generally sound, but pre-2000 wood joints are weaker than the latest standard.'};return{era:'2000年基準 (2000+)',label:'Current seismic standard',color:'var(--green)',risk:'Low',note:'Built to the strengthened post-2000 code — the strongest standard for wooden houses.'};}
+function riskLevel(l){const s=seismicInfo(l.built_year);let sc={'Low':1,'Moderate':2,'High':3,'Unknown':2}[s.risk];const c=(l.condition||'')+(l.description||'');if(/大規模修繕|要大規模/.test(c))sc+=1;if(l.built_year&&(new Date().getFullYear()-l.built_year)>50)sc+=1;if(sc>=4)return{label:'High Risk',color:'var(--red)'};if(sc>=3)return{label:'Elevated',color:'var(--accent)'};if(sc===2)return{label:'Moderate',color:'var(--blue)'};return{label:'Low Risk',color:'var(--green)'};}
+function airbnbVerdict(l){const t=((l.title||'')+(l.description||'')).toLowerCase();const to=AIRBNB_TOURISM[l.prefecture]||45;let pros=[],cons=[];if(to>=75)pros.push('High tourist demand in this region');else if(to>=55)pros.push('Moderate tourist traffic');else cons.push('Lower tourist volume in this area');if(/海|ocean|beach|sea/.test(t))pros.push('Coastal/ocean proximity');if(/温泉|onsen/.test(t))pros.push('Hot spring access nearby');if(/古民家|kominka/.test(t))pros.push('Traditional architecture — unique stay');if(/リノベ|renovated/.test(t))pros.push('Already renovated — lower setup cost');if(l.size_m2>=100)pros.push('Large floor area ('+l.size_m2+'m²) fits groups');if(/大規模修繕/.test(t))cons.push('Major renovation needed before listing');if(l.built_year&&l.built_year<1960)cons.push('Very old structure ('+l.built_year+') — compliance risk');if(!l.size_m2||l.size_m2<60)cons.push('Small floor area limits group bookings');const nightly=Math.round(45*(to/60)*(l.size_m2?Math.min(2,l.size_m2/80):1));const SPECIAL=['大阪','東京','新潟','千葉','福岡'];const special=SPECIAL.includes(l.prefecture);const annualNights=Math.min(180,Math.round(120*(to/60)));const monthly=Math.round(nightly*annualNights/12);const annualEUR=nightly*annualNights;const priceEUR=l.price_jpy?Math.round(l.price_jpy*FX.EUR):null;const roi=priceEUR&&annualEUR?Math.round(priceEUR/annualEUR):null;if(annualNights>=180)cons.push('Income limited by the 180-night/yr minpaku cap');const minpaku=special?'In a special minpaku zone (特区民泊): with a licence you can operate beyond the 180-night/yr cap.':'Standard minpaku is capped at 180 nights/yr — exceeding it needs a hotel/ryokan licence (旅館業法). Always verify the local ordinance & register (届出).';return{pros:pros.slice(0,4),cons:cons.slice(0,4),nightly,monthly,annualNights,special,minpaku,roi};}
+
+let _imgs=[],_idx=0;
+function lbOpen(i){_idx=i;document.getElementById('lb-img').src=bigImg(_imgs[_idx]);document.getElementById('lb').classList.add('open');}
+function lbClose(){document.getElementById('lb').classList.remove('open');}
+function lbNav(d){_idx=(_idx+d+_imgs.length)%_imgs.length;document.getElementById('lb-img').src=bigImg(_imgs[_idx]);}
+
+async function init(){
+  try{const r=await fetch('https://api.exchangerate-api.com/v4/latest/JPY');const d=await r.json();if(d&&d.rates){FX.EUR=d.rates.EUR;FX.USD=d.rates.USD;FX.GBP=d.rates.GBP;FX.AUD=d.rates.AUD;}}catch{}
+  const id=new URLSearchParams(location.search).get('id');
+  let listings=[];
+  for(const src of ['listings.json','/api/listings']){try{const r=await fetch(src);if(!r.ok)continue;listings=(await r.json()).listings||[];if(listings.length)break;}catch{}}
+  const l=listings.find(x=>x.id===id);
+  const wrap=document.getElementById('wrap');
+  if(!l){wrap.innerHTML='<div style="padding:40px 0;color:var(--text3)">Listing not found. <a href="./">Back to all listings →</a></div>';document.title='Listing not found — Akiya Finder';return;}
+  render(l);
+}
+
+function render(l){
+  document.title=(l.title_en||l.title||'Listing')+' — Akiya Finder';
+  _imgs=(l.images&&l.images.length)?l.images:(l.image_url?[l.image_url]:[]);
+  const ab=calcAirbnb(l),abc=airbnbColor(ab),s=seismicInfo(l.built_year),rk=riskLevel(l),v=airbnbVerdict(l);
+  const prefEN=prefToEN(l.prefecture);
+
+  let gallery;
+  if(!_imgs.length)gallery='<div class="ph">家</div>';
+  else if(_imgs.length===1)gallery=`<img class="ph" style="cursor:zoom-in;aspect-ratio:16/9;object-fit:cover" src="${bigImg(_imgs[0])}" onclick="lbOpen(0)">`;
+  else gallery=`<div class="gallery"><img class="main" src="${bigImg(_imgs[0])}" onclick="lbOpen(0)">`+_imgs.slice(1,7).map((u,i)=>`<img src="${u}" onclick="lbOpen(${i+1})">`).join('')+`</div>`;
+
+  let price;
+  if(l.price_jpy===0)price='<span class="price-jpy" style="color:var(--green)">FREE — 無償譲渡</span>';
+  else if(l.price_jpy)price=`<span class="price-jpy">${fmtYen(l.price_jpy)}</span>${userCurrency!=='JPY'?`<span class="price-conv">≈ ${convPrice(l.price_jpy)}</span>`:''}<div class="price-note">¥${l.price_jpy.toLocaleString('de-DE')}</div>`;
+  else price='<span style="color:var(--text3)">Price on request — 要問合せ</span>';
+
+  const specs=[['Floor Area',l.size_m2?l.size_m2+'m²':'—'],['Land Area',l.land_m2?l.land_m2+'m²':'—'],['Layout',l.rooms||'—'],['Built',l.built_year?l.built_year+' ('+(new Date().getFullYear()-l.built_year)+' yrs)':'—'],['Condition',conditionEN(l.condition)||'—'],['Prefecture',prefEN]].map(([a,b])=>`<div class="spec"><div class="spec-l">${a}</div><div class="spec-v">${b}</div></div>`).join('');
+
+  document.getElementById('wrap').innerHTML=`
+    ${gallery}
+    <div class="loc">${prefEN}${l.city?' · '+l.city:''} · ${l.source||''}</div>
+    <h1>${l.title_en||l.title}</h1>
+    ${l.title_en?`<div class="jp">${l.title}</div>`:''}
+    <a class="gmaps" href="${gmapsUrl(l)}" target="_blank">📍 Open address in Google Maps</a>
+    <div class="price-block">${price}</div>
+    <div class="specs">${specs}</div>
+
+    <div class="sec-title">Building standard & risk</div>
+    <div class="card">
+      <div class="two">
+        <div><div class="spec-l">Seismic standard</div><div style="font-weight:700;color:${s.color}">${s.label}</div><div class="jp" style="margin:0">${s.era}</div></div>
+        <div><div class="spec-l">Overall risk</div><div style="font-weight:700;color:${rk.color}">${rk.label}</div><div style="font-size:12px;color:var(--text3)">${l.built_year?(new Date().getFullYear()-l.built_year)+' years old':'Age unknown'}</div></div>
+      </div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.6">${s.note}</div>
+    </div>
+
+    ${(l.description_en||l.description)?`<div class="sec-title">Description</div>
+      ${l.description_en?`<div class="desc">${l.description_en}</div>`:''}
+      ${l.description?`<div class="desc jp" style="color:var(--text3)">${l.description}</div>`:''}`:''}
+
+    <div class="sec-title">Airbnb potential</div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:56px;height:56px;border-radius:50%;border:2px solid ${abc};display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <span style="font-family:var(--mono);font-size:18px;color:${abc}">${ab}</span><span style="font-size:8px;color:${abc}">/99</span></div>
+        <div style="flex:1"><div style="font-weight:700;color:${abc}">${ab>=75?'Strong Airbnb Candidate':ab>=60?'Good Potential':ab>=45?'Moderate Potential':'Limited Airbnb Appeal'}</div></div>
+      </div>
+      <div class="metrics">
+        <div><div class="metric-l">EST. NIGHTLY</div><div class="metric-v" style="color:var(--accent2)">€${v.nightly}–€${v.nightly+20}</div></div>
+        <div><div class="metric-l">EST. MONTHLY</div><div class="metric-v" style="color:var(--accent2)">€${v.monthly}</div></div>
+        <div><div class="metric-l">MINPAKU NIGHTS/YR</div><div class="metric-v" style="color:${v.special?'var(--green)':'var(--accent)'}">${v.annualNights}${v.special?'+':' max'}</div></div>
+        <div><div class="metric-l">BREAK-EVEN</div><div class="metric-v" style="font-size:12px;color:var(--text2)">${l.price_jpy===0?'Immediate':v.roi?'~'+v.roi+' yrs':'N/A'}</div></div>
+      </div>
+      <div class="note" style="border-left-color:${v.special?'var(--green)':'var(--accent)'}"><strong style="color:${v.special?'var(--green)':'var(--accent)'}">⚖ 民泊 Minpaku law:</strong> ${v.minpaku}</div>
+      <div class="pc">
+        <div><div class="pc-t" style="color:var(--green)">✓ Pros</div>${v.pros.map(p=>`<div class="point">· ${p}</div>`).join('')||'<div class="point">Standard potential</div>'}</div>
+        <div><div class="pc-t" style="color:var(--red)">✕ Cons</div>${v.cons.map(c=>`<div class="point">· ${c}</div>`).join('')||'<div class="point">No major issues</div>'}</div>
+      </div>
+    </div>
+
+    ${(l.lat&&l.lng)?`<div class="sec-title">Approximate location</div><div id="map"></div><div style="font-size:11px;color:var(--text3);margin-bottom:8px">📍 Town-level only — use the Google Maps link above for the exact address.</div>`:''}
+
+    <div class="btns">
+      <a class="btn btn-p" href="${l.source_url}" target="_blank">→ View original listing</a>
+      <a class="btn btn-s" href="./?l=${encodeURIComponent(l.id)}">See on map / app</a>
+    </div>`;
+
+  if(l.lat&&l.lng){
+    const m=L.map('map',{zoomControl:true,scrollWheelZoom:false}).setView([l.lat,l.lng],12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(m);
+    L.marker([l.lat,l.lng]).addTo(m);
+  }
+}
+document.addEventListener('keydown',e=>{if(!document.getElementById('lb').classList.contains('open'))return;if(e.key==='Escape')lbClose();if(e.key==='ArrowRight')lbNav(1);if(e.key==='ArrowLeft')lbNav(-1);});
+init();
+</script>
+</body>
+</html>
