@@ -40,13 +40,19 @@ jobs:
       - name: Restore listings DB
         uses: actions/cache@v4
         with:
-          path: akiya_v4.db
+          path: |
+            akiya_v4.db
+            geocache.json
           key: akiya-db-${{ github.run_id }}
           restore-keys: |
             akiya-db-
 
       - name: Scrape (incremental)
         run: python run_pipeline.py
+
+      - name: Geocode listings to real towns
+        run: python enrich_geo.py
+        continue-on-error: true
 
       - name: Backfill a batch of detail-page photos
         run: python enrich_images.py 60

@@ -9,13 +9,16 @@ Set-Location -Path $PSScriptRoot
 Write-Host "== 1/4 Scraping (incremental) =="
 python run_pipeline.py
 
-Write-Host "== 2/4 Backfilling detail-page photos =="
+Write-Host "== 2/5 Geocoding to real towns =="
+python enrich_geo.py
+
+Write-Host "== 3/5 Backfilling detail-page photos =="
 python enrich_images.py 80
 
-Write-Host "== 3/4 Building static snapshot (public/) =="
+Write-Host "== 4/5 Building static snapshot (public/) =="
 python export_static.py
 
-Write-Host "== 4/4 Deploying to Cloudflare Pages =="
+Write-Host "== 5/5 Deploying to Cloudflare Pages =="
 wrangler pages deploy public --project-name=akiya-finder
 
 Write-Host "== Done =="
