@@ -251,6 +251,10 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 .auth-input:focus { border-color: var(--accent); }
 .auth-submit { width: 100%; height: 42px; background: var(--accent); color: #000; border: none; border-radius: var(--r); font-family: var(--sans); font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: .03em; }
 .auth-submit:hover { background: var(--accent2); }
+.auth-google { width: 100%; height: 42px; display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff; color: #3c4043; border: none; border-radius: var(--r); font-family: var(--sans); font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 14px; }
+.auth-google:hover { background: #f1f1f1; }
+.auth-or { display: flex; align-items: center; gap: 10px; color: var(--text3); font-size: 11px; margin-bottom: 12px; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .auth-switch { text-align: center; font-size: 11px; color: var(--text3); margin-top: 14px; }
 .auth-switch a { color: var(--accent); cursor: pointer; }
 .auth-msg { text-align: center; font-size: 11px; margin-top: 10px; min-height: 14px; }
@@ -553,6 +557,11 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
     <div class="auth-close" onclick="closeAuth()">✕</div>
     <div class="auth-title" id="auth-title">Sign in</div>
     <div class="auth-sub">Save favorites and sync them across your devices.</div>
+    <button class="auth-google" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-or"><span>or use email</span></div>
     <input class="auth-input" type="email" id="auth-email" placeholder="Email">
     <input class="auth-input" type="password" id="auth-password" placeholder="Password">
     <button class="auth-submit" id="auth-submit" onclick="submitAuth()">Sign in</button>
@@ -645,9 +654,15 @@ async function initAuth() {
       await loadCloudFavs();
       await loadWatchlistData(); await loadNotifs();
     }
-    supa.auth.onAuthStateChange((_e, session) => {
+    supa.auth.onAuthStateChange(async (event, session) => {
       currentUser = session ? session.user : null;
       updateAuthUI();
+      if (event === 'SIGNED_IN' && currentUser) {
+        await loadCloudFavs();
+        await loadWatchlistData(); await loadNotifs();
+        renderWatchlists();
+        await handleJoinLink();
+      }
     });
     await handleJoinLink();   // honor ?join=<token> invite links
   }
@@ -764,6 +779,14 @@ async function submitAuth() {
     msg.className = 'auth-msg error'; msg.textContent = err.message || 'Authentication failed.';
   }
 }
+async function signInGoogle() {
+  if (!supa) { showToast('Login not configured'); return; }
+  await supa.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: location.origin + location.pathname }
+  });
+}
+
 async function signOut() {
   if (supa) await supa.auth.signOut();
   currentUser = null;
