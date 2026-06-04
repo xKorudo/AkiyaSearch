@@ -845,11 +845,30 @@ function airbnbVerdict(s, l) {
   const tourismMult = tourism / 60;
   const sizeMult = l.size_m2 ? Math.min(2, l.size_m2 / 80) : 1;
   const nightlyEUR = Math.round(baseRate.EUR * tourismMult * sizeMult);
-  const monthlyEUR = Math.round(nightlyEUR * 15);
-  const priceEUR = l.price_jpy ? Math.round(l.price_jpy * FX.EUR) : null;
-  const roiYears = priceEUR ? Math.round(priceEUR / (monthlyEUR * 12)) : null;
 
-  return { pros: pros.slice(0,4), cons: cons.slice(0,4), nightlyEUR, monthlyEUR, roiYears };
+  // ── Minpaku (民泊) legal allowance ──────────────────────────────────────────
+  // A standard private-lodging registration (住宅宿泊事業) is capped at 180
+  // nights/year nationwide. Special zones (特区民泊) or a hotel/ryokan licence
+  // (旅館業法) can exceed it. We cap the income estimate at the legal allowance.
+  const SPECIAL_ZONES = ['大阪', '東京', '新潟', '千葉', '福岡'];
+  const specialZone = SPECIAL_ZONES.includes(l.prefecture);
+  const legalCapNights = 180;
+  const demandNights = Math.round(120 * (tourism / 60));      // demand-based estimate
+  const annualNights = Math.min(legalCapNights, demandNights); // capped by minpaku law
+  const monthlyEUR = Math.round(nightlyEUR * annualNights / 12);
+  const annualEUR = nightlyEUR * annualNights;
+  const priceEUR = l.price_jpy ? Math.round(l.price_jpy * FX.EUR) : null;
+  const roiYears = priceEUR && annualEUR ? Math.round(priceEUR / annualEUR) : null;
+
+  const minpakuNote = specialZone
+    ? 'In a special minpaku zone (特区民泊): with a licence you can operate beyond the 180-night/yr cap.'
+    : 'Standard minpaku is capped at 180 nights/yr — exceeding it needs a hotel/ryokan licence (旅館業法). Always verify the local ordinance & register (届出).';
+
+  if (annualNights >= legalCapNights)
+    cons.push('Income limited by the 180-night/yr minpaku cap');
+
+  return { pros: pros.slice(0,4), cons: cons.slice(0,4),
+           nightlyEUR, monthlyEUR, roiYears, annualNights, specialZone, minpakuNote };
 }
 
 // ── FILTERS ──────────────────────────────────────────────────────────────────
@@ -1018,7 +1037,7 @@ function openDetail(id) {
 
   const ab = calcAirbnb(l);
   const abColor = airbnbColor(ab);
-  const { pros, cons, nightlyEUR, monthlyEUR, roiYears } = airbnbVerdict(ab, l);
+  const { pros, cons, nightlyEUR, monthlyEUR, roiYears, annualNights, specialZone, minpakuNote } = airbnbVerdict(ab, l);
   const prefEN = prefToEN(l.prefecture);
 
   let priceBlock = '';
@@ -1153,9 +1172,12 @@ function openDetail(id) {
         </div>
         <div class="airbnb-metrics">
           <div class="airbnb-metric"><div class="airbnb-metric-label">EST. NIGHTLY RATE</div><div class="airbnb-metric-val" style="color:var(--accent2)">€${nightlyEUR}–€${nightlyEUR+20}</div></div>
-          <div class="airbnb-metric"><div class="airbnb-metric-label">EST. MONTHLY (50%)</div><div class="airbnb-metric-val" style="color:var(--accent2)">€${monthlyEUR}</div></div>
-          <div class="airbnb-metric"><div class="airbnb-metric-label">TOURISM SCORE</div><div class="airbnb-metric-val" style="color:var(--blue)">${AIRBNB_TOURISM[l.prefecture]||45}/90</div></div>
+          <div class="airbnb-metric"><div class="airbnb-metric-label">EST. MONTHLY INCOME</div><div class="airbnb-metric-val" style="color:var(--accent2)">€${monthlyEUR}</div></div>
+          <div class="airbnb-metric"><div class="airbnb-metric-label">MINPAKU NIGHTS/YR</div><div class="airbnb-metric-val" style="color:${specialZone?'var(--green)':'var(--accent)'}">${annualNights}${specialZone?'+':' max'}</div></div>
           <div class="airbnb-metric"><div class="airbnb-metric-label">BREAK-EVEN</div><div class="airbnb-metric-val" style="color:var(--text2);font-size:10px">${roiText}</div></div>
+        </div>
+        <div style="background:var(--surface3);border-left:2px solid ${specialZone?'var(--green)':'var(--accent)'};border-radius:4px;padding:8px 10px;margin-bottom:12px;font-size:10px;line-height:1.5;color:var(--text2)">
+          <strong style="color:${specialZone?'var(--green)':'var(--accent)'}">⚖ 民泊 Minpaku law:</strong> ${minpakuNote}
         </div>
         <div class="airbnb-pros-cons">
           <div class="airbnb-pros"><div class="airbnb-pros-title">✓ Pros</div>${prosHTML||'<div class="airbnb-point">Standard rental potential</div>'}</div>
