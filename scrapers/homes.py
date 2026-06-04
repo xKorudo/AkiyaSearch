@@ -179,15 +179,25 @@ def scrape(max_pages=3):
     consecutive_blocked = 0
 
     counts = _pref_counts()
-    # Least-covered prefectures first (random tiebreak) → each run fills gaps
-    order = sorted(PREFECTURES, key=lambda pr: (counts.get(pr[0], 0), random.random()))
+    # Shuffle randomly each run so all prefectures rotate evenly rather than
+    # always fixing on the smallest one.
+    order = list(PREFECTURES)
+    random.shuffle(order)
 
     for pref_jp, params in order:
         pref_count = 0
         blocked = False
-        # Resume at a deeper page so covered regions yield NEW listings, not repeats
-        start_page = counts.get(pref_jp, 0) // 30 + 1
-        for page in range(start_page, start_page + max_pages):
+        # Always start from page 1: SUUMO sorts newest-first, so fresh listings
+        # appear at the top regardless of how many we've stored. Jumping to a
+        # deeper page skips new content entirely. Deduplication at insert time
+        # discards already-known listings without wasting a DB write.
+        #
+        # Also try pages beyond our current coverage depth so the DB keeps
+        # growing even when pages 1-N are fully known.
+        fresh_pages = range(1, max_pages + 1)
+        known_depth = counts.get(pref_jp, 0) // 30 + 1
+        deep_pages = range(known_depth, known_depth + max_pages) if known_depth > max_pages else range(0)
+        for page in sorted(set(fresh_pages) | set(deep_pages)):
             url = BASE.format(params, page)
             try:
                 cards = _fetch_cards(session, url)
@@ -248,7 +258,7 @@ def scrape(max_pages=3):
                 continue
 
         ta = params.split("ta=")[-1]
-        print(f"  pref ta={ta} (from p{start_page}): {pref_count} new", flush=True)
+        print(f"  pref ta={ta}: {pref_count} new", flush=True)
 
         # Early-bail ONLY on real blocks (not on prefectures that are simply
         # exhausted) so we don't keep hammering a blocked IP.
