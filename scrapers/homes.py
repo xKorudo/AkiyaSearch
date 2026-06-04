@@ -158,6 +158,7 @@ def scrape(max_pages=1):
     })
 
     results = []
+    consecutive_blocked = 0
 
     for pref_jp, params in PREFECTURES:
         pref_count = 0
@@ -221,6 +222,18 @@ def scrape(max_pages=1):
         # ta code is ascii-safe for the console
         ta = params.split("ta=")[-1]
         print(f"  pref ta={ta}: {pref_count} listings", flush=True)
+
+        # Early-bail on a sustained block: once SUUMO blocks the IP it stays
+        # blocked for a while, so grinding through the rest just wastes time
+        # (and keeps the IP blocked longer). Stop and keep what we have.
+        if pref_count == 0:
+            consecutive_blocked += 1
+        else:
+            consecutive_blocked = 0
+        if consecutive_blocked >= 5:
+            print("  Sustained block detected - stopping early. Re-run later to fill the rest.", flush=True)
+            break
+
         # polite pause between prefectures to stay under the throttle threshold
         time.sleep(random.uniform(5, 8))
 
