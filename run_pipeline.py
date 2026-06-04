@@ -33,9 +33,15 @@ def run_pipeline():
     all_listings = enrich(all_listings)
 
     print(f"Saving {len(all_listings)} listings")
-
     for l in all_listings:
         upsert(l)
+
+    print("Syncing to Supabase + tracking price/sold changes...")
+    try:
+        from core.sync_supabase import sync
+        sync(all_listings)
+    except Exception as e:
+        print("  Supabase sync error:", type(e).__name__, e)
 
     print("DONE")
 
