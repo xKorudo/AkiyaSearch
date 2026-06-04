@@ -277,6 +277,17 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r); padding: 10px 18px; font-size: 12px; font-family: var(--mono); color: var(--text2); z-index: 9999; transition: transform .2s; pointer-events: none; }
 .toast.show { transform: translateX(-50%) translateY(0); }
 
+/* ── PRICE PIN MARKERS ───────────────────────────────────────────────────── */
+.price-pin-icon { background: none; border: none; }
+.price-pin {
+  position: absolute; transform: translate(-50%, -50%);
+  white-space: nowrap; padding: 3px 8px; border-radius: 12px;
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  background: rgba(18,18,18,.92); border: 1.5px solid; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,.5);
+}
+.price-pin:hover { background: rgba(40,40,40,.96); z-index: 1000; }
+
 /* ── MARKER CLUSTERS (dark theme) ────────────────────────────────────────── */
 .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background: rgba(232,160,32,.25); }
 .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background: var(--accent); color: #000; font-family: var(--mono); font-weight: 600; }
@@ -518,6 +529,21 @@ function convPrice(jpy) {
   if (jpy == null) return '';
   if (userCurrency === 'JPY') return '¥' + Math.round(jpy).toLocaleString('de-DE');
   return CUR_SYMBOL[userCurrency] + Math.round(jpy * FX[userCurrency]).toLocaleString('de-DE');
+}
+
+// Compact price for map pins, e.g. €30K, €1.2M, FREE (currency-aware)
+function convPriceShort(jpy) {
+  if (jpy === 0) return 'FREE';
+  if (jpy == null) return '?';
+  if (userCurrency === 'JPY') {
+    const man = jpy / 10000;
+    return man >= 10000 ? '¥' + (man / 10000).toFixed(1) + '億' : '¥' + Math.round(man) + '万';
+  }
+  const v = jpy * FX[userCurrency];
+  const sym = CUR_SYMBOL[userCurrency];
+  if (v >= 1000000) return sym + (v / 1000000).toFixed(1) + 'M';
+  if (v >= 1000) return sym + Math.round(v / 1000) + 'K';
+  return sym + Math.round(v);
 }
 
 function setCurrency(c) {
@@ -1173,10 +1199,9 @@ function renderMarkers() {
     if (!l.lat || !l.lng) return;
     const ab = calcAirbnb(l);
     const color = l.price_jpy === 0 ? '#3ecf8e' : ab >= 75 ? '#f05050' : ab >= 60 ? '#a060f0' : '#e8a020';
-    const size = l.price_jpy === 0 ? 16 : ab >= 70 ? 14 : 10;
     const icon = L.divIcon({
-      html: `<div style="width:${size}px;height:${size}px;background:${color};border:2px solid rgba(0,0,0,.5);border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.4)"></div>`,
-      className: '', iconSize: [size, size], iconAnchor: [size/2, size/2]
+      html: `<div class="price-pin" style="border-color:${color};color:${color}">${convPriceShort(l.price_jpy)}</div>`,
+      className: 'price-pin-icon', iconSize: [0, 0]
     });
     const mk = L.marker([l.lat, l.lng], { icon });
     markersCluster.addLayer(mk);
