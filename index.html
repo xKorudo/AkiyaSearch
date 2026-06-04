@@ -706,10 +706,14 @@ async function toggleFav(id, el) {
 
   // cloud sync if logged in
   if (supa && currentUser) {
-    try {
-      if (adding) await supa.from('favorites').upsert({ user_id: currentUser.id, listing_id: id });
-      else await supa.from('favorites').delete().eq('user_id', currentUser.id).eq('listing_id', id);
-    } catch { /* stays in localStorage regardless */ }
+    let error;
+    if (adding) {
+      ({ error } = await supa.from('favorites')
+        .upsert({ user_id: currentUser.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true }));
+    } else {
+      ({ error } = await supa.from('favorites').delete().eq('user_id', currentUser.id).eq('listing_id', id));
+    }
+    if (error) { console.error('favorite sync failed:', error); showToast('⚠ Could not sync favorite: ' + error.message); }
   } else if (adding && !currentUser) {
     showToast('Saved on this device · sign in to sync');
   }
@@ -717,17 +721,18 @@ async function toggleFav(id, el) {
 
 async function loadCloudFavs() {
   if (!supa || !currentUser) return;
-  try {
-    const { data } = await supa.from('favorites').select('listing_id').eq('user_id', currentUser.id);
-    if (data) {
-      data.forEach(r => FAVS.add(r.listing_id));   // merge cloud + local
-      // push any local-only favorites up to the cloud
-      const rows = [...FAVS].map(id => ({ user_id: currentUser.id, listing_id: id }));
-      if (rows.length) await supa.from('favorites').upsert(rows);
-      saveLocalFavs(); updateFavCount();
-      if (typeof renderList === 'function') renderList();
-    }
-  } catch { /* ignore */ }
+  const { data, error } = await supa.from('favorites').select('listing_id').eq('user_id', currentUser.id);
+  if (error) { console.error('load favorites failed:', error); return; }
+  (data || []).forEach(r => FAVS.add(r.listing_id));   // merge cloud + local
+  // push any local-only favorites to the cloud (insert-only; ignore existing)
+  const rows = [...FAVS].map(id => ({ user_id: currentUser.id, listing_id: id }));
+  if (rows.length) {
+    const { error: pErr } = await supa.from('favorites')
+      .upsert(rows, { onConflict: 'user_id,listing_id', ignoreDuplicates: true });
+    if (pErr) console.error('push local favorites failed:', pErr);
+  }
+  saveLocalFavs(); updateFavCount();
+  if (typeof renderList === 'function') renderList();
 }
 
 function toggleFavView() {
