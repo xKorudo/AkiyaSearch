@@ -81,24 +81,22 @@ def main():
             except Exception:
                 imgs = None
 
-            if imgs is None or (not imgs and n == 0):
+            # No images almost always means a block/throttle (SUUMO listings have
+            # photos). NEVER overwrite the existing set with an empty one — just
+            # count it as a failure and bail if it keeps happening.
+            if not imgs:
                 fails += 1
-                print(f"  [{i}/{len(todo)}] blocked/failed: {url[:55]}", flush=True)
-                if fails >= 4:
-                    print("  Too many failures — stopping early. Re-run later to continue.", flush=True)
+                print(f"  [{i}/{len(todo)}] no images (likely blocked): {url[:50]}", flush=True)
+                if fails >= 3:
+                    print("  Repeated blocks — stopping early. Re-run later (or via Actions) to continue.", flush=True)
                     break
-                time.sleep(random.uniform(8, 15))
+                time.sleep(random.uniform(15, 25))
                 continue
 
             fails = 0
-            if imgs:
-                update_images(lid, json.dumps(imgs), first_image=imgs[0])
-                done += 1
-                print(f"  [{i}/{len(todo)}] {len(imgs)} photos  <- {url[:50]}", flush=True)
-            else:
-                update_images(lid, json.dumps([]))  # truly no photos; mark done
-                print(f"  [{i}/{len(todo)}] 0 photos (marked done)", flush=True)
-
+            update_images(lid, json.dumps(imgs), first_image=imgs[0])
+            done += 1
+            print(f"  [{i}/{len(todo)}] {len(imgs)} photos  <- {url[:50]}", flush=True)
             time.sleep(random.uniform(2, 4))
 
         browser.close()
