@@ -37,6 +37,26 @@ def init_db():
     conn.close()
 
 
+def pref_counts(source=None):
+    """Per-prefecture listing counts (optionally for one source). Drives
+    least-covered-first scraping so runs target gaps instead of repeating."""
+    try:
+        conn = sqlite3.connect(DB)
+        if source:
+            rows = conn.execute(
+                "SELECT prefecture, COUNT(*) FROM listings WHERE source=? GROUP BY prefecture",
+                (source,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT prefecture, COUNT(*) FROM listings GROUP BY prefecture"
+            ).fetchall()
+        conn.close()
+        return dict(rows)
+    except Exception:
+        return {}
+
+
 def listings_needing_images(min_images=5, limit=40):
     """Return (id, source_url, current_image_count) for SUUMO listings whose
     stored image set is small (i.e. only the list-page thumbnails)."""

@@ -4,7 +4,7 @@ try:
 except Exception:
     pass
 
-from scrapers import suumo, akiya_bank, homes, akiyabank_lifull
+from scrapers import akiya_bank, homes, akiyabank_lifull
 from core.dedupe import dedupe
 from core.enrich import enrich
 from db.database import init_db, upsert
@@ -16,9 +16,6 @@ def run_pipeline():
 
     print("Scraping SUUMO houses...")
     all_listings += homes.scrape()
-
-    print("Scraping SUUMO akiya (akiya2)...")
-    all_listings += suumo.scrape()
 
     print("Scraping LIFULL Akiya Bank (headless browser)...")
     try:

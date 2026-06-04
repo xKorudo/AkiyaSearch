@@ -21,7 +21,35 @@ REGIONS = [
     "hokkaido", "tohoku", "kanto", "shinetsu", "hokuriku",
     "tokai", "kinki", "chugoku", "shikoku", "kyushu",
 ]
+
+# Which prefectures each region covers (for least-covered-first ordering)
+REGION_PREFS = {
+    "hokkaido": ["北海道"],
+    "tohoku": ["青森", "岩手", "宮城", "秋田", "山形", "福島"],
+    "kanto": ["茨城", "栃木", "群馬", "埼玉", "千葉", "東京", "神奈川"],
+    "shinetsu": ["新潟", "長野", "山梨"],
+    "hokuriku": ["富山", "石川", "福井"],
+    "tokai": ["岐阜", "静岡", "愛知", "三重"],
+    "kinki": ["滋賀", "京都", "大阪", "兵庫", "奈良", "和歌山"],
+    "chugoku": ["鳥取", "島根", "岡山", "広島", "山口"],
+    "shikoku": ["徳島", "香川", "愛媛", "高知"],
+    "kyushu": ["福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"],
+}
+
 BASE = "https://www.homes.co.jp/akiyabank/{}/"
+
+
+def _ordered_regions():
+    """Least-covered regions first (random tiebreak), so each run targets gaps."""
+    try:
+        from db.database import pref_counts
+        counts = pref_counts("LIFULL Akiya Bank")
+    except Exception:
+        counts = {}
+    return sorted(
+        REGIONS,
+        key=lambda r: (sum(counts.get(p, 0) for p in REGION_PREFS.get(r, [])), random.random()),
+    )
 
 PREF_RE = re.compile(r"(北海道|青森|岩手|宮城|秋田|山形|福島|茨城|栃木|群馬|埼玉|千葉|東京|神奈川|"
                      r"新潟|富山|石川|福井|山梨|長野|岐阜|静岡|愛知|三重|滋賀|京都|大阪|兵庫|奈良|"
@@ -110,7 +138,7 @@ def scrape(max_pages=3):
         page = ctx.new_page()
 
         empty_regions = 0
-        for region in REGIONS:
+        for region in _ordered_regions():
             got_any = False
             seen_first = None
             for pg in range(1, max_pages + 1):
