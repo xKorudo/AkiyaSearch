@@ -129,8 +129,8 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 .map-area { flex: 1; position: relative; }
 #map { width: 100%; height: 100%; }
 
-/* DETAIL PANEL (slides over map) */
-.detail-panel { position: absolute; top: 0; right: 0; width: 440px; height: 100%; background: var(--surface); border-left: 1px solid var(--border2); z-index: 500; transform: translateX(100%); transition: transform .25s ease; overflow-y: auto; }
+/* DETAIL PANEL (top-level overlay, slides in from the right) */
+.detail-panel { position: fixed; top: 52px; right: 0; width: 440px; height: calc(100vh - 52px); background: var(--surface); border-left: 1px solid var(--border2); z-index: 9000; transform: translateX(100%); transition: transform .25s ease; overflow-y: auto; }
 .detail-panel.open { transform: translateX(0); }
 .detail-panel::-webkit-scrollbar { width: 4px; }
 .detail-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
@@ -273,30 +273,76 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 /* TOAST */
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r); padding: 10px 18px; font-size: 12px; font-family: var(--mono); color: var(--text2); z-index: 9999; transition: transform .2s; pointer-events: none; }
 .toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── TOP NAV (sections) ──────────────────────────────────────────────────── */
+.main-nav { display: flex; gap: 4px; margin-left: 8px; }
+.nav-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--r); font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; letter-spacing: .01em; transition: all .15s; white-space: nowrap; }
+.nav-link:hover { background: var(--surface2); color: var(--text); }
+.nav-link.active { background: var(--surface3); color: var(--accent); }
+.nav-badge { font-family: var(--mono); font-size: 10px; background: var(--surface3); color: var(--text2); border-radius: 10px; padding: 1px 6px; }
+.nav-link.active .nav-badge { background: var(--accent); color: #000; }
+.nav-toggle { display: none; background: var(--surface2); border: 1px solid var(--border2); color: var(--text); font-size: 18px; width: 38px; height: 34px; border-radius: var(--r); cursor: pointer; }
+
+/* ── CARD GRID (Search / Saved sections) ─────────────────────────────────── */
+.sidebar.grid-mode { width: 100% !important; }
+.grid-mode .listings-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; padding: 16px; align-content: start; }
+.grid-mode .lcard { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface2); }
+.grid-mode .lcard:hover { border-color: var(--border2); }
+.grid-mode .lcard.selected { border-left: 2px solid var(--accent); }
+
+/* ── RESPONSIVE / MOBILE ─────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  header { padding: 0 12px; gap: 10px; }
+  .hide-mobile { display: none !important; }
+  .nav-toggle { display: block; }
+  .main-nav {
+    position: absolute; top: 52px; left: 0; right: 0;
+    flex-direction: column; gap: 0; margin: 0;
+    background: var(--surface); border-bottom: 1px solid var(--border2);
+    padding: 6px; z-index: 200;
+    transform: translateY(-150%); transition: transform .2s; pointer-events: none;
+  }
+  .main-nav.open { transform: translateY(0); pointer-events: all; }
+  .nav-link { width: 100%; padding: 12px 14px; font-size: 14px; }
+
+  /* toolbar wraps and scrolls */
+  .toolbar { height: auto; flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  .search-wrap { max-width: none; flex: 1 1 100%; }
+  .filter-tags { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .toolbar-sep { display: none; }
+
+  /* layout: one section visible at a time, full width */
+  .sidebar { width: 100% !important; border-right: none; }
+  .grid-mode .listings-list { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+
+  /* detail + panels go full-screen on phones */
+  .detail-panel { width: 100%; }
+  .yen-panel { width: calc(100% - 24px); right: 12px; left: 12px; }
+  .auth-modal { width: calc(100% - 32px); }
+}
 </style>
 </head>
 <body>
 
 <header>
   <div class="logo">🏚 <span>Akiya</span> Finder <span class="logo-jp">空き家</span></div>
-  <div class="header-divider"></div>
-  <div class="live-badge"><div class="live-dot"></div> LIVE DATA</div>
+  <div class="live-badge hide-mobile"><div class="live-dot"></div> LIVE DATA</div>
+
+  <nav class="main-nav" id="main-nav">
+    <a class="nav-link active" id="nav-search" onclick="setSection('search')">🔍 Search</a>
+    <a class="nav-link" id="nav-map" onclick="setSection('map')">🗺 Map</a>
+    <a class="nav-link" id="nav-saved" onclick="setSection('saved')">♡ Saved <span id="fav-count" class="nav-badge">0</span></a>
+  </nav>
+
   <div class="header-right">
-    <span id="result-count">— listings</span>
-    <div class="header-divider"></div>
-    <button class="hbtn active" onclick="setView('split')" id="vbtn-split">⊞ Split</button>
-    <button class="hbtn" onclick="setView('list')" id="vbtn-list">≡ List</button>
-    <button class="hbtn" onclick="setView('map')" id="vbtn-map">⊕ Map</button>
-    <div class="header-divider"></div>
-    <button class="hbtn hbtn-refresh" onclick="openYen()" title="Yen/EUR Calculator">¥ Calc</button>
-    <button class="hbtn hbtn-refresh" onclick="refreshData()">↺ Refresh</button>
-    <div class="header-divider"></div>
-    <button class="hbtn" id="fav-nav-btn" onclick="toggleFavView()" title="My favorites">♡ <span id="fav-count">0</span></button>
+    <span id="result-count" class="hide-mobile">— listings</span>
+    <button class="hbtn hbtn-refresh hide-mobile" onclick="openYen()" title="Yen/EUR Calculator">¥</button>
     <button class="hbtn hbtn-refresh" id="login-btn" onclick="openAuth()">Sign in</button>
     <div id="user-chip" style="display:none;align-items:center;gap:8px">
-      <span id="user-email" style="font-family:var(--mono);font-size:11px;color:var(--text2)"></span>
+      <span id="user-email" class="hide-mobile" style="font-family:var(--mono);font-size:11px;color:var(--text2)"></span>
       <button class="hbtn" onclick="signOut()">Sign out</button>
     </div>
+    <button class="nav-toggle" id="nav-toggle" onclick="toggleMobileNav()">☰</button>
   </div>
 </header>
 
@@ -372,15 +418,16 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
   <!-- MAP -->
   <div class="map-area" id="map-area">
     <div id="map"></div>
-    <!-- Detail Panel -->
-    <div class="detail-panel" id="detail-panel">
-      <div class="dp-close">
-        <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">PROPERTY DETAIL</span>
-        <div class="dp-close-btn" onclick="closeDetail()">✕</div>
-      </div>
-      <div id="dp-content"></div>
-    </div>
   </div>
+</div>
+
+<!-- Detail Panel (top-level overlay so it works in every section) -->
+<div class="detail-panel" id="detail-panel">
+  <div class="dp-close">
+    <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">PROPERTY DETAIL</span>
+    <div class="dp-close-btn" onclick="closeDetail()">✕</div>
+  </div>
+  <div id="dp-content"></div>
 </div>
 
 <!-- GLOBAL YEN CALCULATOR -->
@@ -443,6 +490,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadListings();
   fetchFXRates();
   initAuth();
+  setSection('search');   // default to the card-grid view
 });
 
 // ── AUTH + FAVORITES ──────────────────────────────────────────────────────────
@@ -527,9 +575,8 @@ async function loadCloudFavs() {
 }
 
 function toggleFavView() {
-  favView = !favView;
-  document.getElementById('fav-nav-btn').classList.toggle('on', favView);
-  filter();
+  // Kept for compatibility; the "Saved" nav section now drives this.
+  setSection(favView ? 'search' : 'saved');
 }
 
 // --- auth modal ---
@@ -1099,17 +1146,35 @@ function renderMarkers() {
 }
 
 // ── VIEW MODES ────────────────────────────────────────────────────────────────
-function setView(v) {
-  activeView = v;
+// Sections: 'search' (card grid), 'map' (full map), 'saved' (favorites grid)
+function setSection(s) {
+  activeView = s;
   const sidebar = document.getElementById('sidebar');
   const mapArea = document.getElementById('map-area');
-  ['split','list','map'].forEach(id => document.getElementById('vbtn-'+id)?.classList.remove('active'));
-  document.getElementById('vbtn-'+v)?.classList.add('active');
-  if (v === 'split') { sidebar.style.display = ''; mapArea.style.display = ''; sidebar.style.width = '400px'; }
-  if (v === 'list') { sidebar.style.display = ''; mapArea.style.display = 'none'; sidebar.style.width = '100%'; }
-  if (v === 'map') { sidebar.style.display = 'none'; mapArea.style.display = ''; }
-  setTimeout(() => map?.invalidateSize(), 50);
+
+  ['search','map','saved'].forEach(id => document.getElementById('nav-'+id)?.classList.remove('active'));
+  document.getElementById('nav-'+s)?.classList.add('active');
+
+  // 'saved' is the grid filtered to favorites
+  favView = (s === 'saved');
+
+  if (s === 'map') {
+    sidebar.style.display = 'none';
+    mapArea.style.display = '';
+  } else {
+    // search + saved: full-width card grid, map hidden
+    sidebar.style.display = '';
+    sidebar.classList.add('grid-mode');
+    mapArea.style.display = 'none';
+  }
+
+  closeMobileNav();
+  filter();
+  setTimeout(() => map?.invalidateSize(), 80);
 }
+
+function toggleMobileNav() { document.getElementById('main-nav').classList.toggle('open'); }
+function closeMobileNav() { document.getElementById('main-nav').classList.remove('open'); }
 
 // ── YEN PANEL ─────────────────────────────────────────────────────────────────
 function openYen() { document.getElementById('yen-panel').classList.add('open'); }
