@@ -1182,12 +1182,23 @@ function closeDetail() {
   selectedId = null;
 }
 
+// Stable small offset (~±1km) per listing so houses sharing one town centre
+// don't pile on the exact same point — keeps pins readable.
+function jitterCoord(id, lat, lng) {
+  let h = 0;
+  for (let i = 0; i < (id || '').length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) | 0;
+  const r1 = ((h & 0xffff) / 0xffff) - 0.5;
+  const r2 = (((h >>> 16) & 0xffff) / 0xffff) - 0.5;
+  return [lat + r1 * 0.02, lng + r2 * 0.026];   // ~±1.1km lat / ~±1.1km lng
+}
+
 // ── MAP MARKERS ───────────────────────────────────────────────────────────────
 function renderMarkers() {
   if (!markersCluster) {
     markersCluster = L.markerClusterGroup({
       maxClusterRadius: 45,
-      spiderfyOnMaxZoom: true,        // identical points fan out into a ring at full zoom
+      spiderfyOnMaxZoom: true,
+      spiderfyDistanceMultiplier: 2.2,   // wider rings when points still overlap
       showCoverageOnHover: false,
       chunkedLoading: true,
     });
@@ -1203,7 +1214,8 @@ function renderMarkers() {
       html: `<div class="price-pin" style="border-color:${color};color:${color}">${convPriceShort(l.price_jpy)}</div>`,
       className: 'price-pin-icon', iconSize: [0, 0]
     });
-    const mk = L.marker([l.lat, l.lng], { icon });
+    const [jlat, jlng] = jitterCoord(l.id, l.lat, l.lng);
+    const mk = L.marker([jlat, jlng], { icon });
     markersCluster.addLayer(mk);
     mk._akiyaId = l.id;
     // Price shown in the user's chosen currency (with yen as secondary)
