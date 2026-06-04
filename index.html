@@ -283,10 +283,21 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 .nav-link.active .nav-badge { background: var(--accent); color: #000; }
 .nav-toggle { display: none; background: var(--surface2); border: 1px solid var(--border2); color: var(--text); font-size: 18px; width: 38px; height: 34px; border-radius: var(--r); cursor: pointer; }
 
-/* ── CARD GRID (Search / Saved sections) ─────────────────────────────────── */
-.sidebar.grid-mode { width: 100% !important; }
-.grid-mode .listings-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); grid-auto-rows: max-content; align-items: start; align-content: start; gap: 14px; padding: 16px; }
-.grid-mode .lcard { align-self: start; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface2); }
+/* ── SECTION LAYOUTS ─────────────────────────────────────────────────────── */
+/* Search & Saved: full-width responsive card grid, no map */
+.section-search .map-area, .section-saved .map-area { display: none; }
+.section-search .sidebar, .section-saved .sidebar { width: 100%; }
+.section-search .listings-list, .section-saved .listings-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  grid-auto-rows: max-content; align-items: start; align-content: start; gap: 14px; padding: 16px;
+}
+.section-search .lcard, .section-saved .lcard {
+  align-self: start; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface2);
+}
+
+/* Map: split view — narrow listings column beside the map */
+.section-map .sidebar { width: 400px; }
+.section-map .map-area { display: block; }
 .grid-mode .lcard:hover { border-color: var(--border2); }
 .grid-mode .lcard.selected { border-left: 2px solid var(--accent); }
 
@@ -311,9 +322,11 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
   .filter-tags { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
   .toolbar-sep { display: none; }
 
-  /* layout: one section visible at a time, full width */
-  .sidebar { width: 100% !important; border-right: none; }
-  .grid-mode .listings-list { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+  /* layout: full width; on phones the Map section is map-only */
+  .sidebar { border-right: none; }
+  .section-search .sidebar, .section-saved .sidebar { width: 100% !important; }
+  .section-search .listings-list, .section-saved .listings-list { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+  .section-map .sidebar { display: none; }   /* split doesn't fit on phones → map only */
 
   /* detail + panels go full-screen on phones */
   .detail-panel { width: 100%; }
@@ -1146,27 +1159,17 @@ function renderMarkers() {
 }
 
 // ── VIEW MODES ────────────────────────────────────────────────────────────────
-// Sections: 'search' (card grid), 'map' (full map), 'saved' (favorites grid)
+// Sections: 'search' (card grid), 'map' (split: list + map), 'saved' (favorites grid)
 function setSection(s) {
   activeView = s;
-  const sidebar = document.getElementById('sidebar');
-  const mapArea = document.getElementById('map-area');
-
   ['search','map','saved'].forEach(id => document.getElementById('nav-'+id)?.classList.remove('active'));
   document.getElementById('nav-'+s)?.classList.add('active');
 
-  // 'saved' is the grid filtered to favorites
+  // 'saved' filters the grid to favorites; map shows everything
   favView = (s === 'saved');
 
-  if (s === 'map') {
-    sidebar.style.display = 'none';
-    mapArea.style.display = '';
-  } else {
-    // search + saved: full-width card grid, map hidden
-    sidebar.style.display = '';
-    sidebar.classList.add('grid-mode');
-    mapArea.style.display = 'none';
-  }
+  // Layout is driven entirely by the section class on #main (see CSS)
+  document.getElementById('main').className = 'main section-' + s;
 
   closeMobileNav();
   filter();
