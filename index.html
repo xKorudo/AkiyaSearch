@@ -93,7 +93,7 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 .listings-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
 /* LISTING CARD */
-.lcard { border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+.lcard { display: block; text-decoration: none; color: inherit; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
 .lcard:hover { background: var(--surface2); }
 .lcard.selected { background: rgba(232,160,32,.07); border-left: 2px solid var(--accent); }
 .lcard-img-wrap { position: relative; width: 100%; height: 160px; overflow: hidden; background: var(--surface3); }
@@ -1252,12 +1252,12 @@ function cardHTML(l) {
   const prefEN = prefToEN(l.prefecture);
 
   return `
-  <div class="lcard ${selectedId===l.id?'selected':''}" onclick="cardClick(event,'${l.id}')" onauxclick="cardAux(event,'${l.id}')">
+  <a class="lcard ${selectedId===l.id?'selected':''}" href="?l=${encodeURIComponent(l.id)}" onclick="return cardClick(event,'${l.id}')">
     <div class="lcard-img-wrap">
       ${img}${placeholder}
       <div class="lcard-badges">${badgeFree}${badgeCheap}${badgeAB}</div>
       <span class="badge-source">${l.source||''}</span>
-      <button class="fav-btn ${isFav(l.id)?'on':''}" onclick="event.stopPropagation();toggleFav('${l.id}',this)" title="Save to favorites">${isFav(l.id)?'♥':'♡'}</button>
+      <button class="fav-btn ${isFav(l.id)?'on':''}" onclick="event.stopPropagation();event.preventDefault();toggleFav('${l.id}',this)" title="Save to favorites">${isFav(l.id)?'♥':'♡'}</button>
     </div>
     <div class="lcard-body">
       <div class="lcard-location">${prefEN}${l.city ? ' · '+l.city : ''}</div>
@@ -1273,9 +1273,9 @@ function cardHTML(l) {
     </div>
     <div class="lcard-footer">
       <div class="lcard-tags">${tags}</div>
-      <a class="lcard-link" href="${l.source_url}" target="_blank" onclick="event.stopPropagation()">Source →</a>
+      <span class="lcard-link" onclick="event.stopPropagation();event.preventDefault();window.open('${l.source_url}','_blank')">Source →</span>
     </div>
-  </div>`;
+  </a>`;
 }
 
 // ── SEISMIC STANDARD & RISK (derived from build year + condition) ─────────────
@@ -1309,13 +1309,14 @@ function riskLevel(l) {
   return { label: 'Low Risk', color: 'var(--green)' };
 }
 
-// Card click handling: left = open modal; ctrl/cmd = new tab; middle = new tab
-function listingDeepLink(id) { return location.origin + location.pathname + '?l=' + encodeURIComponent(id); }
+// Card is an <a href="?l=ID">. Middle-click / ctrl-click → browser opens a new
+// tab natively. Plain left-click → open the in-app modal (no navigation).
 function cardClick(e, id) {
-  if (e.ctrlKey || e.metaKey || e.button === 1) { window.open(listingDeepLink(id), '_blank'); return; }
+  if (e.ctrlKey || e.metaKey || e.shiftKey) return true;  // let the browser open a new tab/window
+  e.preventDefault();
   openDetail(id);
+  return false;
 }
-function cardAux(e, id) { if (e.button === 1) { e.preventDefault(); window.open(listingDeepLink(id), '_blank'); } }
 function openDeepLink() {
   const id = new URLSearchParams(location.search).get('l');
   if (id && listingById(id)) openDetail(id);
