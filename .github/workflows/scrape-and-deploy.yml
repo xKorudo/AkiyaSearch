@@ -67,14 +67,6 @@ jobs:
       - name: Build static snapshot
         run: python export_static.py
 
-      - name: Ensure Cloudflare Pages project exists
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages project create akiya-finder --production-branch main
-        continue-on-error: true   # harmless once the project already exists
-
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
