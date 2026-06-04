@@ -12,6 +12,23 @@ import json
 from core.models import Listing
 from core.normalize import normalize_price, is_valid_image
 
+
+def _pref_counts():
+    """Current listing count per prefecture (from the accumulated DB)."""
+    try:
+        import sqlite3
+        from db.database import DB
+        conn = sqlite3.connect(DB)
+        rows = conn.execute(
+            "SELECT prefecture, COUNT(*) FROM listings WHERE source='SUUMO' GROUP BY prefecture"
+        ).fetchall()
+        conn.close()
+        return dict(rows)
+    except Exception:
+        return {}
+
+
+
 # All 47 prefectures. bs=021 = used detached houses (中古一戸建て, the akiya type).
 # ar = SUUMO regional code, ta = prefecture JIS code.
 PREFECTURES = [
@@ -117,8 +134,9 @@ def _fetch_cards(session, url):
     Fetch a SUUMO results page, robustly handling rate-limiting.
     - 503 / tiny page (~8KB) = hard block -> long cooldown, retry.
     - 200 but small page (~55KB) with 0 cards = soft block -> cooldown, retry once.
-    - 200 large page with 0 cards = genuinely no inventory -> return [].
-    Returns list of card elements.
+    - 200 large page with 0 cards = genuinely no more listings -> return [].
+    Returns: list of cards, [] when a page genuinely has no listings,
+             or None when the IP looks blocked (so the caller can bail).
     """
     for attempt in range(4):
         try:
@@ -140,12 +158,12 @@ def _fetch_cards(session, url):
         if cards:
             return cards
 
-        # 200 but no cards. Big page = truly empty; small = soft block.
+        # 200 but no cards. Big page = genuinely no more listings (not a block).
         if len(r.text) > 120000:
             return []
-        time.sleep(random.uniform(25, 40))
+        time.sleep(random.uniform(25, 40))  # small page = soft block, retry
 
-    return []
+    return None  # exhausted retries -> treat as blocked
 
 
 def scrape(max_pages=3):
@@ -160,13 +178,23 @@ def scrape(max_pages=3):
     results = []
     consecutive_blocked = 0
 
-    for pref_jp, params in PREFECTURES:
+    counts = _pref_counts()
+    # Least-covered prefectures first (random tiebreak) → each run fills gaps
+    order = sorted(PREFECTURES, key=lambda pr: (counts.get(pr[0], 0), random.random()))
+
+    for pref_jp, params in order:
         pref_count = 0
-        for page in range(1, max_pages + 1):
+        blocked = False
+        # Resume at a deeper page so covered regions yield NEW listings, not repeats
+        start_page = counts.get(pref_jp, 0) // 30 + 1
+        for page in range(start_page, start_page + max_pages):
             url = BASE.format(params, page)
             try:
                 cards = _fetch_cards(session, url)
-                if not cards:
+                if cards is None:      # IP blocked
+                    blocked = True
+                    break
+                if not cards:          # no more listings in this prefecture
                     break
 
                 for card in cards:
@@ -219,19 +247,14 @@ def scrape(max_pages=3):
                 print(f"SUUMO error (ta={ta} p{page}):", e)
                 continue
 
-        # ta code is ascii-safe for the console
         ta = params.split("ta=")[-1]
-        print(f"  pref ta={ta}: {pref_count} listings", flush=True)
+        print(f"  pref ta={ta} (from p{start_page}): {pref_count} new", flush=True)
 
-        # Early-bail on a sustained block: once SUUMO blocks the IP it stays
-        # blocked for a while, so grinding through the rest just wastes time
-        # (and keeps the IP blocked longer). Stop and keep what we have.
-        if pref_count == 0:
-            consecutive_blocked += 1
-        else:
-            consecutive_blocked = 0
-        if consecutive_blocked >= 5:
-            print("  Sustained block detected - stopping early. Re-run later to fill the rest.", flush=True)
+        # Early-bail ONLY on real blocks (not on prefectures that are simply
+        # exhausted) so we don't keep hammering a blocked IP.
+        consecutive_blocked = consecutive_blocked + 1 if blocked else 0
+        if consecutive_blocked >= 4:
+            print("  Sustained block - stopping early. Next run (fresh IP) continues the gaps.", flush=True)
             break
 
         # polite pause between prefectures to stay under the throttle threshold
