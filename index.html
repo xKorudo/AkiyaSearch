@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Akiya Finder — Japan Vacant House Database</title>
+<title>Akiya Search — Japan Vacant House Database</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -326,6 +326,14 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 .notif-txt { font-size: 12px; line-height: 1.4; }
 .notif-when { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
 .notif-empty { padding: 24px 14px; text-align: center; color: var(--text3); font-size: 12px; }
+
+/* Profile dropdown */
+.profile-menu { position: fixed; top: 50px; right: 12px; width: 240px; background: var(--surface); border: 1px solid var(--border2); border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.6); z-index: 9500; display: none; padding: 14px; }
+.profile-menu.open { display: block; }
+.profile-label { font-size: 10px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+.profile-email { font-size: 13px; color: var(--text); margin: 4px 0 12px; word-break: break-all; }
+.profile-signout { width: 100%; padding: 9px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r); color: var(--text2); font-family: var(--sans); font-size: 13px; font-weight: 600; cursor: pointer; }
+.profile-signout:hover { background: var(--surface3); color: var(--text); }
 @media (max-width: 860px) { .notif-panel { width: calc(100% - 24px); left: 12px; } }
 
 /* ── MAP DISCLAIMER ──────────────────────────────────────────────────────── */
@@ -413,7 +421,7 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 <body>
 
 <header>
-  <div class="logo">🏚 <span>Akiya</span> Finder <span class="logo-jp">空き家</span></div>
+  <div class="logo">🏚 <span>Akiya</span> Search <span class="logo-jp">空き家</span></div>
   <div class="live-badge hide-mobile"><div class="live-dot"></div> LIVE DATA</div>
 
   <nav class="main-nav" id="main-nav">
@@ -428,10 +436,7 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
     <button class="hbtn hbtn-refresh hide-mobile" onclick="openYen()" title="Yen/EUR Calculator">¥</button>
     <button class="hbtn" id="notif-btn" onclick="toggleNotifs()" title="Notifications" style="position:relative">🔔<span id="notif-badge" class="notif-badge" style="display:none">0</span></button>
     <button class="hbtn hbtn-refresh" id="login-btn" onclick="openAuth()">Sign in</button>
-    <div id="user-chip" style="display:none;align-items:center;gap:8px">
-      <span id="user-email" class="hide-mobile" style="font-family:var(--mono);font-size:11px;color:var(--text2)"></span>
-      <button class="hbtn" onclick="signOut()">Sign out</button>
-    </div>
+    <button class="hbtn" id="profile-btn" onclick="toggleProfile()" title="Profile" style="display:none">👤</button>
     <button class="nav-toggle" id="nav-toggle" onclick="toggleMobileNav()">☰</button>
   </div>
 </header>
@@ -538,6 +543,13 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 <div class="notif-panel" id="notif-panel">
   <div class="notif-head">Notifications <span id="notif-clear" onclick="markNotifsSeen()">Mark all read</span></div>
   <div id="notif-list"></div>
+</div>
+
+<!-- PROFILE DROPDOWN -->
+<div class="profile-menu" id="profile-menu">
+  <div class="profile-label">Signed in as</div>
+  <div class="profile-email" id="profile-email"></div>
+  <button class="profile-signout" onclick="signOut()">Sign out</button>
 </div>
 
 <!-- Detail Panel (centered modal so it doesn't cover the grid) -->
@@ -691,15 +703,29 @@ async function initAuth() {
 }
 
 function updateAuthUI() {
-  const chip = document.getElementById('user-chip');
+  const profileBtn = document.getElementById('profile-btn');
   const btn = document.getElementById('login-btn');
   if (currentUser) {
-    chip.style.display = 'flex';
+    profileBtn.style.display = '';
     btn.style.display = 'none';
-    document.getElementById('user-email').textContent = currentUser.email;
+    document.getElementById('profile-email').textContent = currentUser.email;
   } else {
-    chip.style.display = 'none';
+    profileBtn.style.display = 'none';
     btn.style.display = '';
+    document.getElementById('profile-menu').classList.remove('open');
+  }
+}
+
+function toggleProfile() {
+  const m = document.getElementById('profile-menu');
+  const opening = !m.classList.contains('open');
+  m.classList.toggle('open', opening);
+  if (opening) setTimeout(() => document.addEventListener('click', _profileClose), 0);
+}
+function _profileClose(e) {
+  if (!e.target.closest('#profile-menu') && e.target.id !== 'profile-btn') {
+    document.getElementById('profile-menu').classList.remove('open');
+    document.removeEventListener('click', _profileClose);
   }
 }
 
