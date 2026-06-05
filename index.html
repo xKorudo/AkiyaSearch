@@ -1301,7 +1301,7 @@ function filter() {
   document.getElementById('sidebar-count').textContent = FILTERED.length + ' properties';
   updateFilterUI();
   renderList();
-  renderMarkers();
+  if (activeView === 'map') renderMarkers();   // only build markers when the map is visible
 }
 
 function toggleTag(el, tag) {
@@ -1320,13 +1320,27 @@ function updatePriceLabel() {
 }
 
 // ── RENDER LIST ───────────────────────────────────────────────────────────────
-function renderList() {
+let renderedCount = 0;
+const PAGE_SIZE = 60;
+function renderList(append) {
   const container = document.getElementById('listings-list');
   if (!FILTERED.length) {
     container.innerHTML = '<div class="empty-state"><div class="empty-jp">空</div><div>No properties found</div></div>';
     return;
   }
-  container.innerHTML = FILTERED.map(l => cardHTML(l)).join('');
+  if (!append) { renderedCount = 0; container.innerHTML = ''; }
+  const next = FILTERED.slice(renderedCount, renderedCount + PAGE_SIZE);
+  renderedCount += next.length;
+  container.insertAdjacentHTML('beforeend', next.map(cardHTML).join(''));
+
+  document.getElementById('load-more')?.remove();
+  if (renderedCount < FILTERED.length) {
+    container.insertAdjacentHTML('beforeend',
+      `<div id="load-more" style="grid-column:1/-1;text-align:center;padding:18px 0">
+         <button class="hbtn active" onclick="renderList(true)" style="padding:10px 20px">
+           Load more · ${FILTERED.length - renderedCount} remaining
+         </button></div>`);
+  }
 }
 
 function fmtYen(jpy) {
