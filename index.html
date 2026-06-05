@@ -1294,8 +1294,8 @@ function filter() {
   const inCur = jpy => (jpy == null ? null : (userCurrency === 'JPY' ? jpy : jpy * FX[userCurrency]));
 
   FILTERED = ALL.filter(l => {
-    // This is a buying site — drop rentals (賃貸/家賃/月額) entirely
-    if (/賃貸|家賃|月額|賃料/.test((l.title||'')+(l.description||'')+(l.price_label||'')+(l.condition||''))) return false;
+    // This is a buying site — drop rentals (賃貸 / 家賃 / monthly pricing like 月4万円)
+    if (/賃貸|家賃|賃料|月額|月[\d,]+\s*万|万円?\s*\/\s*月/.test((l.title||'')+(l.description||'')+(l.price_label||'')+(l.condition||''))) return false;
     if (favView && !FAVS.has(l.id)) return false;
     if (pref && !((l.prefecture||'')+(l.city||'')).includes(pref)) return false;
     if (source && l.source !== source) return false;

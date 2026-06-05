@@ -88,12 +88,13 @@ def _parse_spec(spec_text: str):
     """Parse SUUMO dottable spec into (price, city, size_m2, land_m2, rooms, built_year)."""
     t = spec_text
 
-    # Price: 販売価格 | 850万円
+    # Price: anchor on the sale-price field (販売価格 / 価格) so we never grab a
+    # stray 万円 figure (monthly rent, management fee, etc.).
     price = None
     price_label = ""
-    pm = re.search(r"([\d,]+)\s*万円", t)
+    pm = re.search(r"(?:販売)?価格[^\d]*([\d,]+(?:\.\d+)?)\s*[|｜]?\s*万円", t)
     if pm:
-        price_label = pm.group(0)
+        price_label = pm.group(1) + "万円"
         price = normalize_price(price_label)
 
     # Location: 所在地 | 東京都東大和市湖畔３
@@ -230,6 +231,11 @@ def scrape(max_pages=3):
                     # Spec table
                     spec_el = card.select_one(".dottable--cassette")
                     spec_text = spec_el.get_text(" | ", strip=True) if spec_el else ""
+
+                    # Buying site — skip rentals (monthly pricing: 月X万円 / 賃貸 / 家賃 / 賃料)
+                    if re.search(r"賃貸|家賃|賃料|月額|月[\d,]+\s*万", title + spec_text):
+                        continue
+
                     price, price_label, city, size_m2, land_m2, rooms, built_year = _parse_spec(spec_text)
 
                     results.append(Listing(
