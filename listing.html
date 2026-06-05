@@ -8,6 +8,11 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://wmevbetyxqhtprdahxqh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtZXZiZXR5eHFodHByZGFoeHFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzAyOTcsImV4cCI6MjA5NjE0NjI5N30.jd5TDcGI0dlSpypjuoPtdOuqhBhkf_ouX5MMg4oSfSI";
+</script>
 <style>
 :root{--bg:#0e0e0e;--surface:#161616;--surface2:#1e1e1e;--surface3:#252525;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.14);--text:#e8e8e4;--text2:#9a9a90;--text3:#585850;--accent:#e8a020;--accent2:#f0c060;--green:#3ecf8e;--red:#f05050;--blue:#5090f0;--purple:#a060f0;--mono:'IBM Plex Mono',monospace;--sans:'Syne',sans-serif;--jp:'Noto Serif JP',serif;--r:6px;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -51,6 +56,14 @@ h1{font-size:26px;font-weight:700;line-height:1.3;margin:6px 0;}
 .pc-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;}
 .point{font-size:13px;color:var(--text);line-height:1.55;margin-bottom:4px;}
 .desc{font-size:14px;line-height:1.7;color:var(--text2);margin-bottom:8px;}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.act-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--r);background:var(--surface2);border:1px solid var(--border2);color:var(--text2);font-size:14px;font-weight:600;cursor:pointer;}
+.act-btn:hover{background:var(--surface3);color:var(--text);}
+.act-btn.on{color:var(--red);border-color:var(--red);}
+.atw-menu{position:absolute;z-index:1000;background:var(--surface);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.6);padding:6px;min-width:230px;}
+.atw-item{padding:10px;border-radius:5px;font-size:13px;cursor:pointer;}
+.atw-item:hover{background:var(--surface2);}
+.atw-new{border-top:1px solid var(--border);margin-top:4px;padding-top:6px;}
 .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;}
 .btn{flex:1;min-width:160px;padding:12px;text-align:center;border-radius:var(--r);text-decoration:none;font-weight:700;font-size:14px;}
 .btn-p{background:var(--accent);color:#000;}
@@ -103,7 +116,66 @@ function lbOpen(i){_idx=i;document.getElementById('lb-img').src=bigImg(_imgs[_id
 function lbClose(){document.getElementById('lb').classList.remove('open');}
 function lbNav(d){_idx=(_idx+d+_imgs.length)%_imgs.length;document.getElementById('lb-img').src=bigImg(_imgs[_idx]);}
 
+// ── auth + favorites + watchlists (shares the same Supabase session) ──
+let supa=null,currentUser=null,FAVS=new Set(),WATCHLISTS=[],CURRENT=null;
+try{FAVS=new Set(JSON.parse(localStorage.getItem('akiya_favs')||'[]'));}catch{}
+async function initSupa(){
+  if(!(SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase))return;
+  supa=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  const {data}=await supa.auth.getSession();
+  if(data&&data.session){currentUser=data.session.user;await loadFavsAndWatchlists();}
+  renderActions(CURRENT);   // refresh hearts/watchlist state once cloud data is loaded
+}
+async function loadFavsAndWatchlists(){
+  if(!supa||!currentUser)return;
+  try{const {data}=await supa.from('favorites').select('listing_id').eq('user_id',currentUser.id);(data||[]).forEach(r=>FAVS.add(r.listing_id));saveFavs();}catch{}
+  try{
+    const {data:wls}=await supa.from('watchlists').select('*').order('created_at');
+    const ids=(wls||[]).map(w=>w.id);let items=[];
+    if(ids.length){const it=await supa.from('watchlist_items').select('*').in('watchlist_id',ids);items=it.data||[];}
+    WATCHLISTS=(wls||[]).map(w=>({...w,items:items.filter(i=>i.watchlist_id===w.id).map(i=>i.listing_id)}));
+  }catch{}
+}
+function saveFavs(){localStorage.setItem('akiya_favs',JSON.stringify([...FAVS]));}
+function isFav(id){return FAVS.has(id);}
+async function toggleFav(id){
+  const adding=!FAVS.has(id);adding?FAVS.add(id):FAVS.delete(id);saveFavs();renderActions(CURRENT);
+  if(supa&&currentUser){
+    if(adding)await supa.from('favorites').upsert({user_id:currentUser.id,listing_id:id},{onConflict:'user_id,listing_id',ignoreDuplicates:true});
+    else await supa.from('favorites').delete().eq('user_id',currentUser.id).eq('listing_id',id);
+  }
+}
+function openWatchMenu(id,anchor){
+  if(!currentUser){location.href='./?l='+encodeURIComponent(id);return;}
+  document.querySelector('.atw-menu')?.remove();
+  const menu=document.createElement('div');menu.className='atw-menu';
+  menu.innerHTML=(WATCHLISTS.map(w=>`<div class="atw-item" onclick="atwToggle('${w.id}','${id}',this)">${w.items.includes(id)?'☑':'☐'} ${w.name}</div>`).join('')||'<div style="padding:8px;color:var(--text3);font-size:12px">No watchlists yet</div>')
+    +`<div class="atw-item atw-new" onclick="atwCreate('${id}')">＋ New watchlist…</div>`;
+  document.body.appendChild(menu);const r=anchor.getBoundingClientRect();
+  menu.style.top=(r.bottom+window.scrollY+6)+'px';menu.style.left=Math.min(r.left,window.innerWidth-244)+'px';
+  setTimeout(()=>document.addEventListener('click',_wmClose),0);
+}
+function _wmClose(e){if(!e.target.closest('.atw-menu')){document.querySelector('.atw-menu')?.remove();document.removeEventListener('click',_wmClose);}}
+async function atwToggle(wlId,id,el){
+  const w=WATCHLISTS.find(x=>x.id===wlId);const inIt=w.items.includes(id);
+  if(inIt){await supa.from('watchlist_items').delete().eq('watchlist_id',wlId).eq('listing_id',id);w.items=w.items.filter(x=>x!==id);}
+  else{await supa.from('watchlist_items').upsert({watchlist_id:wlId,listing_id:id,added_by:currentUser.id});w.items.push(id);}
+  el.textContent=(inIt?'☐':'☑')+' '+w.name;
+}
+async function atwCreate(id){
+  const name=prompt('New watchlist name:');if(!name)return;
+  const {data}=await supa.from('watchlists').insert({owner_id:currentUser.id,name}).select().single();
+  if(data){await supa.from('watchlist_members').insert({watchlist_id:data.id,user_id:currentUser.id,role:'owner'});await supa.from('watchlist_items').upsert({watchlist_id:data.id,listing_id:id,added_by:currentUser.id});await loadFavsAndWatchlists();}
+  document.querySelector('.atw-menu')?.remove();
+}
+function renderActions(l){
+  if(!l)return;const el=document.getElementById('actions');if(!el)return;
+  el.innerHTML=`<button class="act-btn ${isFav(l.id)?'on':''}" onclick="toggleFav('${l.id}')">${isFav(l.id)?'♥ Saved':'♡ Save to favorites'}</button>
+    <button class="act-btn" onclick="openWatchMenu('${l.id}',this)">👁 Add to watchlist</button>`;
+}
+
 async function init(){
+  initSupa();
   try{const r=await fetch('https://api.exchangerate-api.com/v4/latest/JPY');const d=await r.json();if(d&&d.rates){FX.EUR=d.rates.EUR;FX.USD=d.rates.USD;FX.GBP=d.rates.GBP;FX.AUD=d.rates.AUD;}}catch{}
   const id=new URLSearchParams(location.search).get('id');
   let listings=[];
@@ -115,6 +187,7 @@ async function init(){
 }
 
 function render(l){
+  CURRENT=l;
   document.title=(l.title_en||l.title||'Listing')+' — Akiya Finder';
   _imgs=(l.images&&l.images.length)?l.images:(l.image_url?[l.image_url]:[]);
   const ab=calcAirbnb(l),abc=airbnbColor(ab),s=seismicInfo(l.built_year),rk=riskLevel(l),v=airbnbVerdict(l);
@@ -138,6 +211,7 @@ function render(l){
     <h1>${l.title_en||l.title}</h1>
     ${l.title_en?`<div class="jp">${l.title}</div>`:''}
     <a class="gmaps" href="${gmapsUrl(l)}" target="_blank">📍 Open address in Google Maps</a>
+    <div class="actions" id="actions"></div>
     <div class="price-block">${price}</div>
     <div class="specs">${specs}</div>
 
@@ -186,6 +260,7 @@ function render(l){
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(m);
     L.marker([l.lat,l.lng]).addTo(m);
   }
+  renderActions(l);
 }
 document.addEventListener('keydown',e=>{if(!document.getElementById('lb').classList.contains('open'))return;if(e.key==='Escape')lbClose();if(e.key==='ArrowRight')lbNav(1);if(e.key==='ArrowLeft')lbNav(-1);});
 init();
