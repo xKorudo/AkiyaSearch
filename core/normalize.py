@@ -7,7 +7,12 @@ def normalize_price(text: str):
             # grab the number right before 万円
             m = re.search(r"([\d,]+(?:\.\d+)?)\s*万円", text)
             if m:
-                return int(float(m.group(1).replace(",", "")) * 10000)
+                val = int(float(m.group(1).replace(",", "")) * 10000)
+                # Sanity floor: a sub-¥10,000 sale price is a unit/format artifact
+                # (e.g. "0.02万円" → ¥200). Treat as unknown rather than wrong.
+                if val == 0 or val >= 10000:
+                    return val
+                return None
     except:
         pass
     return None

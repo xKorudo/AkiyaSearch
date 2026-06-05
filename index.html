@@ -1111,6 +1111,8 @@ async function loadListings() {
       const d = await r.json();
       // Drop the legacy "AKIYA BANK" source — it scraped portal nav links, not houses
       ALL = (d.listings || []).filter(l => l.source !== 'AKIYA BANK');
+      // A sub-¥10,000 price is a parse artifact (e.g. ¥200) → show "price on request"
+      ALL.forEach(l => { if (l.price_jpy != null && l.price_jpy > 0 && l.price_jpy < 10000) l.price_jpy = null; });
       populateSources();
       filter();
       setLoading(false);

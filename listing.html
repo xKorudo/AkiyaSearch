@@ -178,6 +178,7 @@ async function init(){
   const id=new URLSearchParams(location.search).get('id');
   let listings=[];
   for(const src of ['listings.json','/api/listings']){try{const r=await fetch(src);if(!r.ok)continue;listings=((await r.json()).listings||[]).filter(x=>x.source!=='AKIYA BANK');if(listings.length)break;}catch{}}
+  listings.forEach(l=>{if(l.price_jpy!=null&&l.price_jpy>0&&l.price_jpy<10000)l.price_jpy=null;});
   const l=listings.find(x=>x.id===id);
   const wrap=document.getElementById('wrap');
   if(!l){wrap.innerHTML='<div style="padding:40px 0;color:var(--text3)">Listing not found. <a href="./">Back to all listings →</a></div>';document.title='Listing not found — Akiya Search';return;}
