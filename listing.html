@@ -81,7 +81,7 @@ h1{font-size:26px;font-weight:700;line-height:1.3;margin:6px 0;}
 <body>
 <header>
   <a class="logo" href="./">🏚 <span>Akiya</span> Search <span class="logo-jp">空き家</span></a>
-  <a class="back" href="./">← All listings</a>
+  <a class="back" href="./search.html">← All listings</a>
 </header>
 <div class="wrap" id="wrap"><div style="color:var(--text3);padding:40px 0">Loading…</div></div>
 
@@ -181,7 +181,7 @@ async function init(){
   listings.forEach(l=>{if(l.price_jpy!=null&&l.price_jpy>0&&l.price_jpy<10000)l.price_jpy=null;});
   const l=listings.find(x=>x.id===id);
   const wrap=document.getElementById('wrap');
-  if(!l){wrap.innerHTML='<div style="padding:40px 0;color:var(--text3)">Listing not found. <a href="./">Back to all listings →</a></div>';document.title='Listing not found — Akiya Search';return;}
+  if(!l){wrap.innerHTML='<div style="padding:40px 0;color:var(--text3)">Listing not found. <a href="./search.html">Back to all listings →</a></div>';document.title='Listing not found — Akiya Search';return;}
   render(l);
 }
 

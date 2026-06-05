@@ -66,11 +66,28 @@ def main():
     with open(os.path.join(OUT, "listings.json"), "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False)
 
-    shutil.copyfile(os.path.join(ROOT, "index.html"), os.path.join(OUT, "index.html"))
-    shutil.copyfile(os.path.join(ROOT, "listing.html"), os.path.join(OUT, "listing.html"))
+    static_files = [
+        "index.html",
+        "search.html",
+        "map.html",
+        "discover.html",
+        "listing.html",
+    ]
+    for fname in static_files:
+        src = os.path.join(ROOT, fname)
+        if os.path.exists(src):
+            shutil.copyfile(src, os.path.join(OUT, fname))
 
-    print(f"Wrote {payload['count']} listings to {OUT}\\listings.json")
-    print(f"Copied index.html to {OUT}\\index.html")
+    for subdir in ["js", "css"]:
+        src_dir = os.path.join(ROOT, subdir)
+        dst_dir = os.path.join(OUT, subdir)
+        if os.path.isdir(src_dir):
+            os.makedirs(dst_dir, exist_ok=True)
+            for fname in os.listdir(src_dir):
+                shutil.copyfile(os.path.join(src_dir, fname), os.path.join(dst_dir, fname))
+
+    print(f"Wrote {payload['count']} listings to {OUT}/listings.json")
+    print("Copied HTML pages and assets to", OUT)
     print("Static site ready in ./public  — deploy that folder to Cloudflare Pages.")
 
 
