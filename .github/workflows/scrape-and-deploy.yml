@@ -9,7 +9,7 @@ name: Scrape & Deploy
 
 on:
   schedule:
-    - cron: "0 1,13 * * *"   # twice a day (the image workflow runs more often)
+    - cron: "0 */4 * * *"    # every 4 hours
   workflow_dispatch: {}        # adds a "Run workflow" button for manual runs
 
 permissions:
