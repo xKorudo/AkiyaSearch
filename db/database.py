@@ -65,7 +65,8 @@ def listings_needing_images(min_images=5, limit=40):
     c = conn.cursor()
     rows = c.execute(
         "SELECT id, source_url, images FROM listings "
-        "WHERE source='SUUMO' AND source_url LIKE 'http%'"
+        "WHERE source='SUUMO' AND source_url LIKE 'http%' "
+        "ORDER BY rowid DESC"   # newest/most-recently-seen first
     ).fetchall()
     conn.close()
 
@@ -97,8 +98,24 @@ def update_images(listing_id, images_json, first_image=None):
 
 
 def upsert(listing):
+    import json
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+
+    # Don't let a re-scrape downgrade a backfilled gallery: if the stored row
+    # already has MORE images than this scrape's (list-page) set, keep the
+    # richer existing gallery + its lead image.
+    try:
+        row = c.execute("SELECT images, image_url FROM listings WHERE id=?", (listing.id,)).fetchone()
+        if row and row[0]:
+            existing = json.loads(row[0])
+            incoming = json.loads(listing.images) if listing.images else []
+            if len(existing) > len(incoming):
+                listing.images = row[0]
+                if existing:
+                    listing.image_url = existing[0]
+    except Exception:
+        pass
 
     c.execute("""
     INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
