@@ -489,6 +489,9 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
     <option value="year_asc">Oldest first</option>
     <option value="year_desc">Newest first</option>
   </select>
+  <select id="source-select" onchange="filter()" title="Listing source / website">
+    <option value="">All sources</option>
+  </select>
   <select id="currency-select" onchange="setCurrency(this.value)" title="Display currency">
     <option value="EUR">€ EUR</option>
     <option value="USD">$ USD</option>
@@ -1105,6 +1108,7 @@ async function loadListings() {
       if (!r.ok) continue;
       const d = await r.json();
       ALL = d.listings || [];
+      populateSources();
       filter();
       setLoading(false);
       openDeepLink();   // open a listing if the URL has ?l=<id>
@@ -1227,6 +1231,17 @@ function airbnbVerdict(s, l) {
 }
 
 // ── FILTERS ──────────────────────────────────────────────────────────────────
+const SOURCE_LABELS = { 'SUUMO': '🏠 SUUMO', 'LIFULL Akiya Bank': '🏚 LIFULL Akiya Bank', 'AKIYA BANK': '🏚 Municipal Akiya Bank' };
+function populateSources() {
+  const sel = document.getElementById('source-select');
+  if (!sel) return;
+  const current = sel.value;
+  const sources = [...new Set(ALL.map(l => l.source).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All sources</option>' +
+    sources.map(s => `<option value="${s}">${SOURCE_LABELS[s] || s}</option>`).join('');
+  sel.value = current;
+}
+
 function toggleFilters() {
   const open = document.getElementById('filter-panel').classList.toggle('open');
   document.getElementById('filters-toggle').classList.toggle('active', open);
@@ -1236,6 +1251,7 @@ function clearFilters() {
   document.getElementById('q').value = '';
   document.getElementById('pref-select').value = '';
   document.getElementById('sort-select').value = '';
+  document.getElementById('source-select').value = '';
   document.getElementById('seismic-select').value = '';
   document.getElementById('price-min').value = '';
   document.getElementById('price-max').value = '';
@@ -1248,6 +1264,7 @@ function activeFilterCount() {
   let n = 0;
   if (document.getElementById('q').value) n++;
   if (document.getElementById('pref-select').value) n++;
+  if (document.getElementById('source-select').value) n++;
   if (document.getElementById('seismic-select').value) n++;
   if (document.getElementById('price-min').value) n++;
   if (document.getElementById('price-max').value) n++;
@@ -1268,6 +1285,7 @@ function filter() {
   const pref = document.getElementById('pref-select').value;
   const sort = document.getElementById('sort-select').value;
   const seismic = document.getElementById('seismic-select').value;
+  const source = document.getElementById('source-select').value;
   const pMin = parseFloat(document.getElementById('price-min').value);   // in user currency
   const pMax = parseFloat(document.getElementById('price-max').value);
   const inCur = jpy => (jpy == null ? null : (userCurrency === 'JPY' ? jpy : jpy * FX[userCurrency]));
@@ -1275,6 +1293,7 @@ function filter() {
   FILTERED = ALL.filter(l => {
     if (favView && !FAVS.has(l.id)) return false;
     if (pref && !((l.prefecture||'')+(l.city||'')).includes(pref)) return false;
+    if (source && l.source !== source) return false;
     if (seismic && seismicInfo(l.built_year).risk !== seismic) return false;
     const cur = inCur(l.price_jpy);
     if (!isNaN(pMin)) { if (cur == null || cur < pMin) return false; }
