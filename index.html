@@ -450,6 +450,16 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
   .detail-panel { width: 100vw; max-height: 100vh; height: 100%; border-radius: 0; border: none; }
   .yen-panel { width: calc(100% - 24px); right: 12px; left: 12px; }
   .auth-modal { width: calc(100% - 32px); }
+
+  /* Discover: compact card so buttons are visible without scrolling */
+  .discover-view { padding: 10px 8px 110px; }
+  .disco-img, .disco-ph { height: 200px; }
+  .disco-body { padding: 12px 14px; }
+  .disco-title { font-size: 15px; }
+  .disco-price { font-size: 18px; margin-bottom: 8px; }
+  .disco-specs { grid-template-columns: 1fr 1fr; }
+  .disco-hint { display: none; }
+  .disco-actions { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; background: var(--surface); border: 1px solid var(--border2); border-radius: 50px; padding: 8px 16px; box-shadow: 0 8px 30px rgba(0,0,0,.6); }
 }
 </style>
 </head>
@@ -1209,6 +1219,41 @@ function discoRichCard(l) {
   </div>`;
 }
 
+function attachDiscoSwipe() {
+  const card = document.querySelector('.disco-card');
+  if (!card) return;
+  let startX = 0, startY = 0, dragging = false;
+  card.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    dragging = false;
+    card.style.transition = 'none';
+  }, { passive: true });
+  card.addEventListener('touchmove', e => {
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!dragging && Math.abs(dx) < Math.abs(dy)) return; // vertical scroll, ignore
+    dragging = true;
+    card.style.transform = `translateX(${dx}px) rotate(${dx * 0.04}deg)`;
+    card.style.opacity = String(1 - Math.abs(dx) / 280);
+  }, { passive: true });
+  card.addEventListener('touchend', e => {
+    if (!dragging) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 70) {
+      const dir = dx > 0 ? 1 : -1;
+      card.style.transition = 'transform 0.3s, opacity 0.3s';
+      card.style.transform = `translateX(${dir * 120}%) rotate(${dir * 18}deg)`;
+      card.style.opacity = '0';
+      setTimeout(() => swipe(dx > 0), 280);
+    } else {
+      card.style.transition = 'transform 0.25s, opacity 0.25s';
+      card.style.transform = '';
+      card.style.opacity = '';
+    }
+  }, { passive: true });
+}
+
 function renderDiscover() {
   const el = document.getElementById('discover-view');
   if (discoMode === 'likes') return renderDiscoLikes();
@@ -1225,6 +1270,7 @@ function renderDiscover() {
       <button class="disco-btn like" onclick="swipe(true)" title="Like it (→)">👍</button>
     </div>
     <div class="disco-hint">← dislike · → like · click photos to zoom</div>`;
+  attachDiscoSwipe();
 }
 
 function renderDiscoLikes() {
