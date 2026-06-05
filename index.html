@@ -1109,7 +1109,8 @@ async function loadListings() {
       const r = await fetch(src);
       if (!r.ok) continue;
       const d = await r.json();
-      ALL = d.listings || [];
+      // Drop the legacy "AKIYA BANK" source — it scraped portal nav links, not houses
+      ALL = (d.listings || []).filter(l => l.source !== 'AKIYA BANK');
       populateSources();
       filter();
       setLoading(false);

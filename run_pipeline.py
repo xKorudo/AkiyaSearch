@@ -4,7 +4,7 @@ try:
 except Exception:
     pass
 
-from scrapers import akiya_bank, homes, akiyabank_lifull
+from scrapers import homes, akiyabank_lifull
 from core.dedupe import dedupe
 from core.enrich import enrich
 from db.database import init_db, upsert
@@ -22,9 +22,6 @@ def run_pipeline():
         all_listings += akiyabank_lifull.scrape()
     except Exception as e:
         print("  LIFULL Akiya Bank skipped:", type(e).__name__, e)
-
-    print("Scraping municipal Akiya Banks...")
-    all_listings += akiya_bank.scrape()
 
     print("Deduplicating...")
     all_listings = dedupe(all_listings)
