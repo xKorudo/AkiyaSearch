@@ -1,0 +1,64 @@
+name: Backfill Images & Deploy
+
+# Dedicated image-gallery backfill. Runs on its OWN schedule so each run gets a
+# fresh GitHub IP used ENTIRELY for fetching detail-page photos — it never
+# competes with the scrape for the same IP's rate limit. This is what actually
+# lets the galleries fill in over time.
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"     # every 2 hours — 12 fresh-IP image runs/day
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# Shared group with scrape-and-deploy.yml so the two never run at the same time
+# (they share the same cached DB).
+concurrency:
+  group: akiya-pipeline
+  cancel-in-progress: false
+
+jobs:
+  backfill-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      - name: Restore listings DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            akiya_v4.db
+            geocache.json
+          key: akiya-db-${{ github.run_id }}
+          restore-keys: |
+            akiya-db-
+
+      - name: Backfill detail-page galleries (fresh IP, full budget)
+        run: python enrich_images.py 150
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Build static snapshot
+        run: python export_static.py
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public --project-name=akiya-finder --branch main

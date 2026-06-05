@@ -9,14 +9,16 @@ name: Scrape & Deploy
 
 on:
   schedule:
-    - cron: "0 */4 * * *"    # every 4 hours (public repo = unlimited Actions minutes)
+    - cron: "0 1,13 * * *"   # twice a day (the image workflow runs more often)
   workflow_dispatch: {}        # adds a "Run workflow" button for manual runs
 
 permissions:
   contents: read
 
-concurrency:                   # never let two scrapes overlap
-  group: scrape
+# Shared with backfill-images.yml so scrape + image runs never overlap on the
+# same cached DB (and never compete for the same IP's rate limit).
+concurrency:
+  group: akiya-pipeline
   cancel-in-progress: false
 
 jobs:
@@ -60,9 +62,8 @@ jobs:
         run: python enrich_geo.py
         continue-on-error: true
 
-      - name: Backfill a batch of detail-page photos
-        run: python enrich_images.py 100
-        continue-on-error: true
+      # NOTE: image backfill is its OWN workflow (backfill-images.yml) so it gets
+      # a fresh, un-throttled IP each run instead of competing with the scrape.
 
       - name: Build static snapshot
         run: python export_static.py
