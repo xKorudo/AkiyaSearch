@@ -74,6 +74,10 @@ def _parse(html):
         cat_el = box.select_one(".categoryTag")
         category = cat_el.get_text(strip=True) if cat_el else ""
 
+        # Buying site only — skip rentals (賃貸)
+        if "賃貸" in category or "賃貸" in box.get_text():
+            continue
+
         dl = box.select_one(".specText dl")
         if not dl:
             continue
