@@ -235,7 +235,49 @@ select:focus { border-color: var(--accent); }
 .notif-when { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
 .notif-empty { padding: 24px 14px; text-align: center; color: var(--text3); font-size: 12px; }
 
-@media (max-width: 860px) {
+/* ── MOBILE NAV BAR ──────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .logo-jp { display: none; }
+  header { padding: 0 12px; gap: 8px; }
+
+  .main-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+    height: 54px; margin: 0; gap: 0; padding: 0;
+    background: var(--surface); border-top: 1px solid var(--border2);
+    justify-content: space-around;
+  }
+  .nav-link {
+    flex: 1; flex-direction: column; align-items: center; justify-content: center;
+    padding: 5px 0 4px; font-size: 20px; gap: 1px; border-radius: 0;
+  }
+  .nav-label {
+    display: block; font-size: 9px; letter-spacing: .03em;
+    font-family: var(--mono); color: var(--text3);
+  }
+  .nav-link.active .nav-label { color: var(--accent); }
+  .nav-link:hover { background: transparent; }
+
+  #result-count { display: none; }
+  .header-right .hbtn:not(#login-btn):not(#profile-btn) { display: none; }
+
+  /* Stacked layout: map on top, listing strip below */
+  .main { flex-direction: column; margin-bottom: 54px; }
+  .sidebar {
+    display: flex !important; width: 100%; height: 38vh;
+    border-right: none; border-top: 1px solid var(--border);
+    order: 2;
+  }
+  .listings-list { height: calc(38vh - 36px); }
+  .map-area { flex: none; height: 44vh; order: 1; }
+  #map { height: 100%; }
+
+  .notif-panel { width: calc(100% - 24px); left: 12px; }
+  .map-disclaimer { display: none; }
+  .detail-panel { width: 100vw; max-height: 95vh; height: 95vh; border-radius: 12px 12px 0 0; border: none; top: auto; bottom: 0; left: 0; transform: translateY(4%); }
+  .detail-panel.open { transform: translateY(0); }
+}
+
+@media (max-width: 860px) and (min-width: 641px) {
   .sidebar { display: none; }
   .notif-panel { width: calc(100% - 24px); left: 12px; }
   .map-disclaimer { max-width: 90%; }
@@ -247,10 +289,10 @@ select:focus { border-color: var(--accent); }
 <header>
   <a class="logo" href="./index.html">🏚 <span>Akiya</span> Search</a>
   <nav class="main-nav" id="main-nav">
-    <a class="nav-link" href="./index.html">🏠 Home</a>
-    <a class="nav-link" href="./search.html">🔍 Search</a>
-    <a class="nav-link active" href="./map.html">🗺 Map</a>
-    <a class="nav-link" href="./discover.html">✨ Discover</a>
+    <a class="nav-link" href="./index.html">🏠<span class="nav-label">Home</span></a>
+    <a class="nav-link" href="./search.html">🔍<span class="nav-label">Search</span></a>
+    <a class="nav-link active" href="./map.html">🗺<span class="nav-label">Map</span></a>
+    <a class="nav-link" href="./discover.html">✨<span class="nav-label">Discover</span></a>
   </nav>
   <div class="header-right">
     <span id="result-count" class="hide-mobile">— listings</span>
