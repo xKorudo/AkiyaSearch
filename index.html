@@ -405,6 +405,17 @@ input[type=range] { width: 90px; accent-color: var(--accent); height: 3px; curso
 .disco-open { background: none; border: 1px solid var(--border2); color: var(--text2); border-radius: var(--r); padding: 8px 14px; font-family: var(--sans); font-size: 13px; cursor: pointer; }
 .disco-hint { font-size: 11px; color: var(--text3); margin-top: 10px; font-family: var(--mono); }
 .disco-progress { font-size: 12px; color: var(--text2); margin-bottom: 14px; }
+.disco-head { display: flex; gap: 8px; align-items: center; width: 100%; max-width: 760px; margin-bottom: 18px; flex-wrap: wrap; }
+.disco-head .disco-progress { margin: 0 0 0 auto; }
+.disco-thumbs { display: flex; gap: 4px; padding: 6px 8px 0; flex-wrap: wrap; }
+.disco-thumbs img { width: 62px; height: 46px; object-fit: cover; border-radius: 4px; cursor: zoom-in; }
+.disco-specs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
+.disco-spec { background: var(--surface3); border-radius: 6px; padding: 8px 10px; }
+.disco-spec span { display: block; font-size: 10px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; margin-bottom: 2px; }
+.disco-spec b { font-size: 13px; }
+.disco-desc { font-size: 13px; color: var(--text2); line-height: 1.6; margin: 10px 0; }
+.disco-likes-grid { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; align-items: start; }
+.disco-likes-grid .lcard { align-self: start; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface2); display: flex; flex-direction: column; min-height: 482px; }
 .grid-mode .lcard:hover { border-color: var(--border2); }
 .grid-mode .lcard.selected { border-left: 2px solid var(--accent); }
 
@@ -1153,37 +1164,75 @@ function discoReason(l) {
   const hits = Object.keys(tagFeats).filter(k => f[k] && p[k] > 0.35).map(k => tagFeats[k]);
   return hits.length ? 'Matches your taste: ' + hits.slice(0,3).join(', ') : 'Similar to houses you liked';
 }
+let discoMode = 'swipe';
+function setDiscoMode(m) { discoMode = m; if (m === 'swipe') { discoQueue = []; renderDiscover(); } else renderDiscoLikes(); }
+
+function discoHeader(active) {
+  const likedN = Object.values(SWIPES).filter(Boolean).length, total = Object.keys(SWIPES).length;
+  return `<div class="disco-head">
+    <button class="hbtn ${active==='swipe'?'active':''}" onclick="setDiscoMode('swipe')">✨ Discover</button>
+    <button class="hbtn ${active==='likes'?'active':''}" onclick="setDiscoMode('likes')">♥ My likes · ${likedN}</button>
+    <span class="disco-progress">${total ? `${total} rated` : 'Swipe to teach it your taste'}</span>
+  </div>`;
+}
+
+function discoRichCard(l) {
+  const s = seismicInfo(l.built_year), rk = riskLevel(l), ab = calcAirbnb(l);
+  const imgs = (l.images && l.images.length) ? l.images : (l.image_url ? [l.image_url] : []);
+  const thumbs = imgs.length > 1
+    ? `<div class="disco-thumbs">${imgs.slice(1,6).map((u,i)=>`<img src="${u}" onclick="openDetailLightbox(${i+1})" onerror="this.remove()">`).join('')}</div>` : '';
+  const specs = [['Floor',l.size_m2?l.size_m2+'m²':'—'],['Land',l.land_m2?l.land_m2+'m²':'—'],['Layout',l.rooms||'—'],
+                 ['Built',l.built_year?l.built_year:'—'],['Condition',conditionEN(l.condition)||'—'],['Region',prefToEN(l.prefecture)]]
+    .map(([a,b])=>`<div class="disco-spec"><span>${a}</span><b>${b}</b></div>`).join('');
+  const desc = (l.description_en || l.description || '').slice(0, 200);
+  const priceStr = l.price_jpy === 0 ? 'FREE / 無償' : l.price_jpy ? fmtYen(l.price_jpy) + (userCurrency!=='JPY' ? ` · ${convPrice(l.price_jpy)}` : '') : 'Price on request';
+  _detailImgs = imgs;   // so the lightbox thumbnails work
+  return `<div class="disco-card">
+    ${imgs.length ? `<img class="disco-img" src="${bigImg(imgs[0])}" onclick="openDetailLightbox(0)" onerror="this.style.display='none'">` : `<div class="disco-ph">家</div>`}
+    ${thumbs}
+    <div class="disco-body">
+      <div class="disco-loc">${prefToEN(l.prefecture)}${l.city ? ' · '+l.city : ''} · ${l.source||''}</div>
+      <div class="disco-title">${l.title_en || l.title}</div>
+      ${l.title_en ? `<div style="font-family:var(--jp);font-size:12px;color:var(--text3);margin-bottom:8px">${l.title}</div>` : ''}
+      <div class="disco-price">${priceStr}</div>
+      <a class="gmaps" style="display:inline-flex;gap:5px;font-size:12px;color:var(--blue);text-decoration:none;margin-bottom:10px" href="${gmapsUrl(l)}" target="_blank">📍 Open address in Google Maps</a>
+      <div class="disco-specs">${specs}</div>
+      <div class="disco-pills">
+        <span class="spec-pill" style="border-color:${s.color};color:${s.color}">🛡 ${s.label}</span>
+        <span class="spec-pill" style="border-color:${rk.color};color:${rk.color}">${rk.label}</span>
+        <span class="spec-pill">Airbnb ${ab}/99</span>
+      </div>
+      ${desc ? `<div class="disco-desc">${desc}${desc.length>=200?'…':''}</div>` : ''}
+      <div class="disco-why">✨ ${discoReason(l)}</div>
+      <a class="disco-open" style="display:inline-block;margin-top:10px;text-decoration:none" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank">Open full page ↗</a>
+    </div>
+  </div>`;
+}
+
 function renderDiscover() {
   const el = document.getElementById('discover-view');
+  if (discoMode === 'likes') return renderDiscoLikes();
   if (!discoQueue.length) buildDiscoQueue();
   discoCurrent = discoQueue.shift();
-  if (!discoCurrent) { el.innerHTML = `<div class="watch-empty" style="padding:60px 16px">No more matches right now. Try clearing filters, or come back as new houses arrive.</div>`; return; }
+  if (!discoCurrent) {
+    el.innerHTML = discoHeader('swipe') + `<div class="watch-empty" style="padding:50px 16px">No more matches right now. Try clearing filters, or come back as new houses arrive.</div>`;
+    return;
+  }
   const l = discoCurrent;
-  const likedN = Object.values(SWIPES).filter(Boolean).length, total = Object.keys(SWIPES).length;
-  const img = l.image_url ? `<img class="disco-img" src="${bigImg(l.image_url)}" onclick="openDetail('${l.id}')" onerror="this.style.display='none'">` : `<div class="disco-ph">家</div>`;
-  const seis = seismicInfo(l.built_year);
-  const pills = [
-    l.size_m2 ? `${l.size_m2}m²` : '', l.land_m2 ? `${l.land_m2}m² land` : '', l.rooms || '',
-    l.built_year ? `${l.built_year}` : '', `Airbnb ${calcAirbnb(l)}/99`
-  ].filter(Boolean).map(s => `<span class="spec-pill">${s}</span>`).join('');
-  el.innerHTML = `
-    <div class="disco-progress">${total ? `${likedN} liked · ${total} rated` : 'Swipe to teach it what you like'}</div>
-    <div class="disco-card">
-      ${img}
-      <div class="disco-body">
-        <div class="disco-loc">${prefToEN(l.prefecture)}${l.city ? ' · '+l.city : ''}</div>
-        <div class="disco-title">${l.title_en || l.title}</div>
-        <div class="disco-price">${l.price_jpy === 0 ? 'FREE / 無償' : l.price_jpy ? fmtYen(l.price_jpy) + (userCurrency!=='JPY' ? ` · ${convPrice(l.price_jpy)}` : '') : 'Price on request'}</div>
-        <div class="disco-pills">${pills}</div>
-        <div class="disco-why">✨ ${discoReason(l)}</div>
-      </div>
-    </div>
+  el.innerHTML = discoHeader('swipe') + discoRichCard(l) + `
     <div class="disco-actions">
       <button class="disco-btn dislike" onclick="swipe(false)" title="Not for me (←)">👎</button>
-      <button class="disco-open" onclick="openDetail('${l.id}')">View details</button>
       <button class="disco-btn like" onclick="swipe(true)" title="Like it (→)">👍</button>
     </div>
-    <div class="disco-hint">← dislike · → like · click photo for details</div>`;
+    <div class="disco-hint">← dislike · → like · click photos to zoom</div>`;
+}
+
+function renderDiscoLikes() {
+  const el = document.getElementById('discover-view');
+  const liked = Object.keys(SWIPES).filter(id => SWIPES[id]).map(listingById).filter(Boolean);
+  el.innerHTML = discoHeader('likes') + (liked.length
+    ? `<div class="disco-likes-grid">${liked.map(cardHTML).join('')}</div>`
+    : `<div class="watch-empty" style="padding:50px 16px">No likes yet — swipe 👍 in Discover and they'll collect here.</div>`);
 }
 function swipe(liked) {
   if (!discoCurrent) return;
