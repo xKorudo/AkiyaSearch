@@ -51,8 +51,12 @@ header{height:52px;background:var(--surface);border-bottom:1px solid var(--borde
 .hz-note{font-size:10px;color:var(--text3);line-height:1.5;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
 @media(max-width:900px){
   .page{flex-direction:column;gap:16px;padding:0 12px;}
-  .hazard-aside{width:100%;position:static;}
-  .report-aside{display:none;}  /* on phones the footer report button is enough */
+  .hazard-aside{width:100%;position:static;order:2;}
+  .wrap{order:1;}
+  /* keep the report container on phones too, compact + below the content */
+  .report-aside{width:100%;position:static;order:3;}
+  .report-box{display:flex;align-items:center;gap:12px;text-align:left;}
+  .report-box-sub{display:none;}
 }
 .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:20px;}
 .gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;cursor:zoom-in;}
@@ -338,9 +342,6 @@ function render(l){
     <div class="btns">
       <a class="btn btn-p" href="${l.source_url}" target="_blank">→ View original listing</a>
       <a class="btn btn-s" href="./?l=${encodeURIComponent(l.id)}">See on map / app</a>
-    </div>
-    <div style="text-align:center;margin-top:14px">
-      <button onclick="openReport()" style="background:none;border:none;color:var(--text3);font-size:13px;cursor:pointer;text-decoration:underline">⚐ Report a problem with this listing</button>
     </div>
     ${typeof disclaimerHTML==='function'?disclaimerHTML():''}`;
 
