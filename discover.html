@@ -73,6 +73,8 @@ header { height: 52px; background: var(--surface); border-bottom: 1px solid var(
 .disco-btn.like:hover { border-color: var(--green); }
 .disco-open { background: none; border: 1px solid var(--border2); color: var(--text2); border-radius: var(--r); padding: 8px 14px; font-family: var(--sans); font-size: 13px; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 10px; }
 .disco-hint { font-size: 11px; color: var(--text3); margin-top: 10px; font-family: var(--mono); }
+.disco-disclaimer { flex-shrink: 0; padding: 8px 16px; border-top: 1px solid var(--border); background: var(--surface); font-size: 10px; line-height: 1.5; color: var(--text3); text-align: center; }
+.disco-disclaimer a { color: var(--accent); text-decoration: none; }
 .disco-thumbs { display: flex; gap: 4px; padding: 6px 8px 0; flex-wrap: wrap; }
 .disco-thumbs img { width: 62px; height: 46px; object-fit: cover; border-radius: 4px; cursor: zoom-in; }
 .disco-specs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
@@ -287,6 +289,9 @@ header { height: 52px; background: var(--surface); border-bottom: 1px solid var(
 <div class="discover-view" id="discover-view">
   <div style="color:var(--text3);font-family:var(--mono);font-size:12px;padding:60px 0">Loading listings…</div>
 </div>
+<div class="disco-disclaimer">
+  ⚠ Listings are auto-aggregated from third-party sources — addresses, prices &amp; details may be inaccurate, outdated or already sold. Estimates aren't advice. <a href="./terms.html" target="_blank">Details</a>
+</div>
 
 <!-- SHARED OVERLAYS -->
 <div class="notif-panel" id="notif-panel">
@@ -466,7 +471,6 @@ function discoRichCard(l) {
       ${desc ? `<div class="disco-desc">${desc}${desc.length>=200?'…':''}</div>` : ''}
       <div class="disco-why">✨ ${discoReason(l)}</div>
       <a class="disco-open" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank">Open full page ↗</a>
-      ${typeof disclaimerHTML === 'function' ? disclaimerHTML() : ''}
     </div>
   </div>`;
 }
