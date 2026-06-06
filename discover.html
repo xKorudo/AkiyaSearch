@@ -387,6 +387,7 @@ function discoRichCard(l) {
       ${desc ? `<div class="disco-desc">${desc}${desc.length>=200?'…':''}</div>` : ''}
       <div class="disco-why">✨ ${discoReason(l)}</div>
       <a class="disco-open" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank">Open full page ↗</a>
+      ${typeof disclaimerHTML === 'function' ? disclaimerHTML() : ''}
     </div>
   </div>`;
 }

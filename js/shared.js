@@ -12,6 +12,21 @@ let userCurrency = localStorage.getItem('akiya_currency') || 'EUR';
 
 let supa = null, currentUser = null, FAVS = new Set(), favView = false, authMode = 'signin';
 let WATCHLISTS = [], NOTIFS = [], notifSeenAt = null;
+
+// ── LEGAL DISCLAIMER ─────────────────────────────────────────────────────────
+// Reusable notice: listing data is aggregated from third-party sources and may be
+// inaccurate, incomplete, outdated or already sold. Limits our liability.
+function disclaimerHTML() {
+  return `<div class="disclaimer" style="margin-top:16px;padding:11px 13px;background:rgba(232,160,32,.06);border:1px solid var(--border2);border-left:3px solid var(--accent);border-radius:6px;font-size:11px;line-height:1.6;color:var(--text2)">
+    ⚠ <strong style="color:var(--text)">Disclaimer:</strong> Listings are aggregated automatically from
+    third-party sources (SUUMO, LIFULL Akiya Bank and others). Details such as the
+    address, location, price, size, build year, photos and availability may be
+    inaccurate, incomplete, outdated or already sold, and translations are
+    machine-generated. Airbnb income, seismic and currency figures are rough
+    estimates, not advice. Always verify everything with the original source and a
+    licensed professional before making any decision. We accept no liability for
+    errors or decisions made based on this information.</div>`;
+}
 let SWIPES = {};
 let _lbImgs = [], _lbIdx = 0, _detailImgs = [];
 
@@ -942,6 +957,7 @@ function openDetail(id) {
         <a href="${l.source_url}" target="_blank" style="flex:1;display:block;padding:10px;background:var(--accent);color:#000;font-weight:700;font-size:12px;text-align:center;border-radius:var(--r);text-decoration:none;letter-spacing:.04em">→ VIEW SOURCE</a>
         <a href="https://www.airbnb.com/s/${encodeURIComponent((prefToEN(l.prefecture)||'Japan')+' Japan')}/homes" target="_blank" style="flex:1;display:block;padding:10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);font-size:12px;text-align:center;border-radius:var(--r);text-decoration:none">🏠 Airbnb Comps</a>
       </div>
+      ${disclaimerHTML()}
     </div>`;
 
   const dp = document.getElementById('detail-panel');
