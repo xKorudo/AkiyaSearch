@@ -522,6 +522,8 @@ function filter() {
   else if (sort === 'size_desc') FILTERED.sort((a,b) => (b.size_m2??0)-(a.size_m2??0));
   else if (sort === 'year_asc') FILTERED.sort((a,b) => (a.built_year??9999)-(b.built_year??9999));
   else if (sort === 'year_desc') FILTERED.sort((a,b) => (b.built_year??0)-(a.built_year??0));
+  // Default: show houses that have an actual price first ("Price on request" last)
+  else FILTERED.sort((a,b) => (a.price_jpy==null?1:0) - (b.price_jpy==null?1:0));
 
   const rc = document.getElementById('result-count');
   if (rc) rc.textContent = FILTERED.length + ' listings';
