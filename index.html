@@ -399,9 +399,9 @@ footer {
 
 <!-- ── RECENT LISTINGS ────────────────────────────────────────────────────────── -->
 <section class="recent">
-  <div class="recent-label">A random glimpse</div>
+  <div class="recent-label" id="recent-eyebrow">A random glimpse</div>
   <div class="recent-head">
-    <h2>Houses from across Japan</h2>
+    <h2 id="recent-h2">Houses from across Japan</h2>
     <a class="hbtn" href="./search.html">Browse all →</a>
   </div>
   <div class="recent-grid" id="recent-grid">
@@ -461,6 +461,20 @@ function fmtPrice(jpy) {
   return { text: '€' + eur, cls: '' };
 }
 
+// Public Supabase (anon, read-only) — used to fetch aggregate view counts.
+const SB_URL = "https://wmevbetyxqhtprdahxqh.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtZXZiZXR5eHFodHByZGFoeHFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzAyOTcsImV4cCI6MjA5NjE0NjI5N30.jd5TDcGI0dlSpypjuoPtdOuqhBhkf_ouX5MMg4oSfSI";
+
+// Fetch the most-viewed listing ids (returns [] if the table isn't set up yet).
+async function fetchTopViews() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/listing_views?select=listing_id,views&order=views.desc&limit=60`,
+      { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+    if (!r.ok) return [];
+    return await r.json();
+  } catch { return []; }
+}
+
 async function loadLanding() {
   try {
     const r = await fetch('./listings.json');
@@ -469,9 +483,23 @@ async function loadLanding() {
     const listings = (d.listings || []).filter(l => l.source !== 'AKIYA BANK');
     document.getElementById('stat-count').textContent = listings.length.toLocaleString();
 
-    // Show 8 random listings with images (we have no reliable listing dates)
     const withImg = listings.filter(l => l.image_url);
-    const sample = withImg.sort(() => Math.random() - 0.5).slice(0, 8);
+
+    // Prefer "current hot picks" (most-viewed). Fall back to a random sample
+    // when we don't have enough view data yet.
+    let sample = [];
+    const views = await fetchTopViews();
+    if (views.length) {
+      const byId = {}; withImg.forEach(l => { byId[l.id] = l; });
+      const hot = views.map(v => byId[v.listing_id]).filter(Boolean).slice(0, 8);
+      if (hot.length >= 4) {
+        sample = hot;
+        const eb = document.getElementById('recent-eyebrow'); if (eb) eb.textContent = 'Most viewed right now';
+        const h2 = document.getElementById('recent-h2'); if (h2) h2.textContent = '🔥 Current hot picks';
+      }
+    }
+    if (!sample.length) sample = withImg.sort(() => Math.random() - 0.5).slice(0, 8);
+
     const grid = document.getElementById('recent-grid');
     if (!sample.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:12px;padding:30px">No listings available</div>'; return; }
     grid.innerHTML = sample.map(l => {
