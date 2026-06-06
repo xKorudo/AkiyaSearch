@@ -24,7 +24,8 @@ try:
 except Exception:
     pass
 
-from db.database import listings_needing_images, listings_needing_traffic, update_images, update_detail_fields
+from db.database import init_db, listings_needing_images, listings_needing_traffic, update_images, update_detail_fields
+init_db()  # ensure traffic column exists on cached DBs that predate the migration
 
 BATCH = 60
 
