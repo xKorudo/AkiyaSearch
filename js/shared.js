@@ -11,6 +11,7 @@ const CUR_SYMBOL = { EUR: '€', USD: '$', GBP: '£', AUD: 'A$', JPY: '¥' };
 let userCurrency = localStorage.getItem('akiya_currency') || 'EUR';
 
 let supa = null, currentUser = null, FAVS = new Set(), favView = false, authMode = 'signin';
+let _lastUserId = null;   // tracks the last signed-in user so tab-focus token refreshes don't reload
 let WATCHLISTS = [], NOTIFS = [], notifSeenAt = null;
 
 // ── VIEW COUNTS / "HOT" ───────────────────────────────────────────────────────
@@ -148,6 +149,7 @@ async function initAuth() {
     const { data } = await supa.auth.getSession();
     if (data && data.session) {
       currentUser = data.session.user;
+      _lastUserId = currentUser.id;
       updateAuthUI();
       await loadCloudFavs();
       await loadWatchlistData(); await loadNotifs(); await loadSwipes();
@@ -159,11 +161,18 @@ async function initAuth() {
     supa.auth.onAuthStateChange(async (event, session) => {
       currentUser = session ? session.user : null;
       updateAuthUI();
-      if (event === 'SIGNED_IN' && currentUser) {
+      const newId = currentUser ? currentUser.id : null;
+      // Supabase re-fires SIGNED_IN / TOKEN_REFRESHED whenever the tab regains
+      // focus. Only reload account data when the user actually CHANGES, otherwise
+      // a focus event would reset the paginated list ("loaded houses disappear").
+      if (newId && newId !== _lastUserId) {
+        _lastUserId = newId;
         await loadCloudFavs();
         await loadWatchlistData(); await loadNotifs(); await loadSwipes();
         renderWatchlists();
         await handleJoinLink();
+      } else if (!newId && _lastUserId) {
+        _lastUserId = null;
       }
     });
     await handleJoinLink();   // honor ?join=<token> invite links
@@ -348,7 +357,7 @@ async function signInGoogle() {
 
 async function signOut() {
   if (supa) await supa.auth.signOut();
-  currentUser = null;
+  currentUser = null; _lastUserId = null;
   WATCHLISTS = []; NOTIFS = []; FAVS = new Set(); SWIPES = {};   // clear all personal data from memory
   try { localStorage.removeItem('akiya_aspect_w'); localStorage.removeItem('akiya_region_w'); } catch {}    // clear learned taste weights too
   updateFavCount();
