@@ -367,7 +367,7 @@ function saveRegionW() { try { localStorage.setItem('akiya_region_w', JSON.strin
 function toggleAspectMode() {
   aspectMode = !aspectMode;
   localStorage.setItem('akiya_aspect_mode', aspectMode ? '1' : '0');
-  renderDiscover();
+  renderDiscover(true);   // keep the current house, just show/hide the chips
 }
 function toggleAspect(key, btn) {
   if (pickedAspects.has(key)) { pickedAspects.delete(key); btn.classList.remove('on'); }
@@ -503,10 +503,12 @@ function attachDiscoSwipe() {
   }, { passive: true });
 }
 
-function renderDiscover() {
+function renderDiscover(keepCurrent) {
   const el = document.getElementById('discover-view');
-  if (!discoQueue.length) buildDiscoQueue();
-  discoCurrent = discoQueue.shift();
+  if (!(keepCurrent && discoCurrent)) {
+    if (!discoQueue.length) buildDiscoQueue();
+    discoCurrent = discoQueue.shift();
+  }
   if (!discoCurrent) {
     el.innerHTML = `<div class="watch-empty">No more matches right now. Try clearing filters, or come back as new houses arrive.</div>`;
     return;
