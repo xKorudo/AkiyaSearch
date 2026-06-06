@@ -110,6 +110,22 @@ async function initAuth() {
   updateAuthUI();
 }
 
+// Returns the signed-in user, recovering the session if auth init hasn't
+// finished yet (prevents a false "sign in" when a click lands too early).
+async function ensureUser() {
+  if (currentUser) return currentUser;
+  if (!supa) return null;
+  try {
+    const { data } = await supa.auth.getSession();
+    if (data && data.session) {
+      currentUser = data.session.user;
+      updateAuthUI();
+      return currentUser;
+    }
+  } catch {}
+  return null;
+}
+
 function updateAuthUI() {
   const profileBtn = document.getElementById('profile-btn');
   const btn = document.getElementById('login-btn');
@@ -151,7 +167,7 @@ function updateFavCount() {
 
 async function toggleFav(id, el) {
   // Favorites require an account so they never persist on a shared device.
-  if (!currentUser) { openAuth(); showToast('Sign in to save favorites'); return; }
+  if (!(await ensureUser())) { openAuth(); showToast('Sign in to save favorites'); return; }
 
   const adding = !FAVS.has(id);
   adding ? FAVS.add(id) : FAVS.delete(id);
@@ -309,7 +325,7 @@ async function acceptPendingInvites() {
 }
 
 async function createWatchlist(name) {
-  if (!requireLogin()) return;
+  if (!(await requireLogin())) return;
   const { data, error } = await supa.from('watchlists').insert({ owner_id: currentUser.id, name: name || 'My Watchlist' }).select().single();
   if (error) { showToast('Could not create list'); return; }
   await supa.from('watchlist_members').insert({ watchlist_id: data.id, user_id: currentUser.id, role: 'owner' });
@@ -352,8 +368,8 @@ async function handleJoinLink() {
   } catch { showToast('Invite link invalid or expired'); }
 }
 
-function requireLogin() {
-  if (!currentUser) { openAuth(); showToast('Sign in to use watchlists'); return false; }
+async function requireLogin() {
+  if (!(await ensureUser())) { openAuth(); showToast('Sign in to use watchlists'); return false; }
   return true;
 }
 
@@ -403,8 +419,8 @@ function wlCardHTML(wlId, l) {
 }
 
 // ── add-to-watchlist menu ──
-function openAddToWatchlist(listingId, anchor) {
-  if (!requireLogin()) return;
+async function openAddToWatchlist(listingId, anchor) {
+  if (!(await requireLogin())) return;
   document.querySelector('.atw-menu')?.remove();
   const menu = document.createElement('div');
   menu.className = 'atw-menu';

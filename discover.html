@@ -228,7 +228,8 @@ header { height: 52px; background: var(--surface); border-bottom: 1px solid var(
 
   /* Compact discover card so price + specs read immediately */
   .discover-view { padding: 12px 12px 28px; }
-  .disco-img, .disco-ph { height: 170px; }
+  .disco-thumbs { display: none; }   /* hide thumbnails on phones to save space */
+  .disco-img, .disco-ph { height: 200px; }
   .disco-body { padding: 12px 14px; }
   .disco-title { font-size: 16px; }
   .disco-price { font-size: 19px; margin-bottom: 8px; }
@@ -436,9 +437,14 @@ function swipe(liked) {
   SWIPES[id] = liked;
   saveSwipe(id, liked);
   // A 👍 also saves to Favorites (so all your likes live in one place: Saved)
-  if (liked && currentUser && !FAVS.has(id)) {
-    FAVS.add(id); if (typeof updateFavCount === 'function') updateFavCount();
-    if (supa) supa.from('favorites').upsert({ user_id: currentUser.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true });
+  if (liked) {
+    (async () => {
+      const u = (typeof ensureUser === 'function') ? await ensureUser() : currentUser;
+      if (u && !FAVS.has(id)) {
+        FAVS.add(id); if (typeof updateFavCount === 'function') updateFavCount();
+        if (supa) supa.from('favorites').upsert({ user_id: u.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true });
+      }
+    })();
   }
   if (Object.keys(SWIPES).length % 4 === 0) discoQueue = [];
   renderDiscover();
