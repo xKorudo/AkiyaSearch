@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Japan's 47 Prefectures — what they're known for | Akiya Search</title>
+<meta name="description" content="A guide to all 47 Japanese prefectures — their regions and what they're famous for, with links to credible sources. Browse vacant akiya houses in each.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c0c0f;--surface:#141418;--surface2:#1c1c22;--surface3:#242430;--border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.12);--text:#e8e8e4;--text2:#9a9a90;--text3:#505048;--accent:#e8a020;--accent2:#f0c060;--blue:#5090f0;--mono:'IBM Plex Mono',monospace;--sans:'Syne',sans-serif;--jp:'Noto Serif JP',serif;--r:8px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;}
+a{color:var(--blue);text-decoration:none;}
+a:hover{text-decoration:underline;}
+header{position:sticky;top:0;z-index:100;height:52px;background:rgba(12,12,15,.92);border-bottom:1px solid var(--border2);backdrop-filter:blur(12px);display:flex;align-items:center;padding:0 24px;gap:16px;}
+.logo{font-size:15px;font-weight:700;color:var(--text);text-decoration:none;}
+.logo span{color:var(--accent);}
+.logo-jp{font-family:var(--jp);font-weight:300;font-size:12px;color:var(--text3);}
+.back{margin-left:auto;font-size:13px;color:var(--text2);}
+.back:hover{color:var(--accent);}
+.wrap{max-width:1100px;margin:0 auto;padding:40px 24px 80px;}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.eyebrow::before{content:'';width:24px;height:1px;background:var(--accent);}
+h1{font-size:clamp(30px,4vw,46px);font-weight:800;letter-spacing:-.02em;margin-bottom:14px;}
+.intro{font-size:15px;color:var(--text2);line-height:1.7;max-width:680px;margin-bottom:10px;}
+.sources{font-size:12px;color:var(--text3);max-width:680px;margin-bottom:32px;line-height:1.6;}
+.region{margin-top:36px;}
+.region h2{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px;}
+.region .rjp{font-family:var(--jp);font-size:12px;color:var(--text3);margin-bottom:16px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+.pcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;}
+.pcard:hover{border-color:var(--border2);}
+.pc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;}
+.pc-name{font-size:16px;font-weight:700;}
+.pc-jp{font-family:var(--jp);font-size:12px;color:var(--accent);}
+.pc-blurb{font-size:13px;color:var(--text2);line-height:1.6;flex:1;margin-bottom:12px;}
+.pc-links{display:flex;gap:14px;font-size:12px;font-family:var(--mono);}
+.pc-links a{color:var(--accent);}
+.toc{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+.toc a{font-family:var(--mono);font-size:11px;color:var(--text2);border:1px solid var(--border2);border-radius:20px;padding:5px 11px;}
+.toc a:hover{border-color:var(--accent);color:var(--accent);text-decoration:none;}
+footer{border-top:1px solid var(--border);padding:24px;max-width:1100px;margin:0 auto;font-family:var(--mono);font-size:11px;color:var(--text3);}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="./index.html">🏚 <span>Akiya</span> Search <span class="logo-jp">空き家</span></a>
+  <a class="back" href="./index.html">← Home</a>
+</header>
+
+<div class="wrap">
+  <div class="eyebrow">Japan field guide</div>
+  <h1>Japan's 47 prefectures</h1>
+  <p class="intro">Japan is divided into 47 prefectures (都道府県), grouped into eight regions from snowy Hokkaidō in the north to tropical Okinawa in the south. Here's a quick guide to each one and what it's famous for — then jump straight to the vacant <em>akiya</em> houses there.</p>
+  <p class="sources">Descriptions are brief summaries for orientation only. Each prefecture links to its <strong>Wikipedia</strong> article for credible, detailed information; for travel and official data see the <a href="https://www.japan.travel/en/destinations/" target="_blank" rel="noopener">Japan National Tourism Organization (JNTO)</a>.</p>
+
+  <div class="toc" id="toc"></div>
+  <div id="regions"></div>
+</div>
+
+<footer>© Akiya Search · Prefecture summaries are general knowledge; verify details via the linked Wikipedia &amp; JNTO sources.</footer>
+
+<script>
+const PREF_EN_JP = { }; // not needed; data carries kanji
+const REGIONS = [
+  { region:'Hokkaidō', jp:'北海道', items:[
+    {en:'Hokkaido', kanji:'北海道', blurb:'Japan’s vast northern island: powder-snow skiing (Niseko), dairy and seafood, lavender fields, and wide-open wilderness.'},
+  ]},
+  { region:'Tōhoku', jp:'東北', items:[
+    {en:'Aomori', kanji:'青森', blurb:'Famous for apples, the fiery Nebuta summer festival, and the prehistoric Sannai-Maruyama site.'},
+    {en:'Iwate', kanji:'岩手', blurb:'Hiraizumi’s UNESCO temples, a rugged Pacific coast, wanko-soba noodles and folklore (Tōno).'},
+    {en:'Miyagi', kanji:'宮城', blurb:'Sendai city, grilled beef tongue (gyūtan), and the pine-dotted bay of Matsushima.'},
+    {en:'Akita', kanji:'秋田', blurb:'Akita dogs, the Kantō pole-lantern festival, fine rice & sake, and the Namahage tradition.'},
+    {en:'Yamagata', kanji:'山形', blurb:'Cherries, the "snow monsters" of Mt. Zaō, Ginzan hot-spring town and Dewa Sanzan pilgrimage.'},
+    {en:'Fukushima', kanji:'福島', blurb:'Aizu samurai history, peaches & sake, and the thatched post-town of Ōuchi-juku.'},
+  ]},
+  { region:'Kantō', jp:'関東', items:[
+    {en:'Ibaraki', kanji:'茨城', blurb:'Hitachi Seaside Park’s flower fields, nattō (fermented soybeans), and Mt. Tsukuba.'},
+    {en:'Tochigi', kanji:'栃木', blurb:'Nikkō’s ornate shrines & shrines (UNESCO), strawberries, and the Ashikaga wisteria.'},
+    {en:'Gunma', kanji:'群馬', blurb:'Hot-spring resorts such as Kusatsu and Ikaho, mountains and demon-mask folklore.'},
+    {en:'Saitama', kanji:'埼玉', blurb:'Kawagoe "Little Edo" warehouses, Chichibu mountains, and easy Tokyo commuting.'},
+    {en:'Chiba', kanji:'千葉', blurb:'Narita Airport, Tokyo Disney Resort, surf beaches on the Bōsō Peninsula, and peanuts.'},
+    {en:'Tokyo', kanji:'東京', blurb:'The capital: world city of culture, business, food and trends — plus mountains and islands.'},
+    {en:'Kanagawa', kanji:'神奈川', blurb:'Yokohama port, the Great Buddha of Kamakura, and Hakone hot springs with Mt. Fuji views.'},
+  ]},
+  { region:'Chūbu', jp:'中部', items:[
+    {en:'Niigata', kanji:'新潟', blurb:'Premium rice & sake, deep "snow country", and Sado Island.'},
+    {en:'Toyama', kanji:'富山', blurb:'The Tateyama Alpine Route’s snow walls, glass art, and bay seafood.'},
+    {en:'Ishikawa', kanji:'石川', blurb:'Kanazawa’s Kenrokuen garden & geisha districts, gold-leaf crafts and Wajima lacquerware.'},
+    {en:'Fukui', kanji:'福井', blurb:'Dinosaur fossils & museum, Eiheiji Zen temple, and the Tōjinbō sea cliffs.'},
+    {en:'Yamanashi', kanji:'山梨', blurb:'Mt. Fuji’s northern lakes, Japan’s wine country, and fruit orchards.'},
+    {en:'Nagano', kanji:'長野', blurb:'The Japanese Alps, snow monkeys, Zenkōji temple, soba and 1998 Olympic ski resorts.'},
+    {en:'Gifu', kanji:'岐阜', blurb:'Shirakawa-gō’s thatched farmhouses (UNESCO), old-town Takayama, and cormorant fishing.'},
+    {en:'Shizuoka', kanji:'静岡', blurb:'Mt. Fuji’s south face, green-tea fields, wasabi, and the Izu Peninsula coast.'},
+    {en:'Aichi', kanji:'愛知', blurb:'Nagoya, Toyota and a manufacturing heartland; castles and hearty "Nagoya-meshi" food.'},
+  ]},
+  { region:'Kansai (Kinki)', jp:'関西', items:[
+    {en:'Mie', kanji:'三重', blurb:'Ise Grand Shrine, Mikimoto pearls, Matsusaka beef, and the ninja town of Iga.'},
+    {en:'Shiga', kanji:'滋賀', blurb:'Lake Biwa (Japan’s largest lake) and the original Hikone Castle.'},
+    {en:'Kyoto', kanji:'京都', blurb:'The thousand-year former capital: temples, gardens, geisha and traditional crafts.'},
+    {en:'Osaka', kanji:'大阪', blurb:'Japan’s kitchen and comedy capital: street food, Dōtonbori, castle and commerce.'},
+    {en:'Hyogo', kanji:'兵庫', blurb:'Cosmopolitan Kobe (and Kobe beef), the white "Egret" Himeji Castle, and onsen towns.'},
+    {en:'Nara', kanji:'奈良', blurb:'Japan’s first capital: free-roaming deer, the Great Buddha of Tōdai-ji, ancient temples.'},
+    {en:'Wakayama', kanji:'和歌山', blurb:'Kōyasan’s Buddhist monasteries, the Kumano Kodō pilgrimage trails, mikan oranges & onsen.'},
+  ]},
+  { region:'Chūgoku', jp:'中国', items:[
+    {en:'Tottori', kanji:'鳥取', blurb:'The famous Tottori Sand Dunes and Detective Conan country.'},
+    {en:'Shimane', kanji:'島根', blurb:'Izumo Taisha (one of Japan’s oldest shrines), Matsue castle town, and the Iwami Ginzan silver mine.'},
+    {en:'Okayama', kanji:'岡山', blurb:'Kōrakuen (a top-three garden), peaches & muscat grapes, and canal-side Kurashiki.'},
+    {en:'Hiroshima', kanji:'広島', blurb:'The Peace Memorial, the floating torii of Miyajima (Itsukushima), okonomiyaki and oysters.'},
+    {en:'Yamaguchi', kanji:'山口', blurb:'The vast Akiyoshidō cavern, fugu (pufferfish), and the arched Kintai Bridge.'},
+  ]},
+  { region:'Shikoku', jp:'四国', items:[
+    {en:'Tokushima', kanji:'徳島', blurb:'The Awa Odori dance festival, the Naruto tidal whirlpools, and indigo dyeing.'},
+    {en:'Kagawa', kanji:'香川', blurb:'Sanuki udon noodles and the art islands of Naoshima & Teshima.'},
+    {en:'Ehime', kanji:'愛媛', blurb:'Dōgo Onsen (an ancient bathhouse), citrus/mikan, and Matsuyama Castle.'},
+    {en:'Kochi', kanji:'高知', blurb:'Seared bonito (katsuo), the clear Shimanto River, and reformer Sakamoto Ryōma.'},
+  ]},
+  { region:'Kyūshū & Okinawa', jp:'九州・沖縄', items:[
+    {en:'Fukuoka', kanji:'福岡', blurb:'Hakata tonkotsu ramen, lively yatai food stalls, and Kyūshū’s gateway city.'},
+    {en:'Saga', kanji:'佐賀', blurb:'Arita & Imari porcelain, and a famous hot-air-balloon festival.'},
+    {en:'Nagasaki', kanji:'長崎', blurb:'Centuries of foreign trade (Dejima) & Christianity, atomic-bomb history, and Huis Ten Bosch.'},
+    {en:'Kumamoto', kanji:'熊本', blurb:'Mighty Kumamoto Castle, the Mt. Aso volcanic caldera, and mascot Kumamon.'},
+    {en:'Oita', kanji:'大分', blurb:'Japan’s onsen capital — steaming Beppu and chic Yufuin.'},
+    {en:'Miyazaki', kanji:'宮崎', blurb:'Sunny surf coast, mythology (Takachiho), mangoes and palm-lined drives.'},
+    {en:'Kagoshima', kanji:'鹿児島', blurb:'The active Sakurajima volcano, Satsuma samurai history, shōchū, and a space center.'},
+    {en:'Okinawa', kanji:'沖縄', blurb:'Subtropical islands: coral beaches, distinct Ryūkyū culture, and famous longevity.'},
+  ]},
+];
+
+function wiki(en){
+  if (en === 'Hokkaido') return 'https://en.wikipedia.org/wiki/Hokkaido';
+  if (en === 'Tokyo') return 'https://en.wikipedia.org/wiki/Tokyo';
+  return 'https://en.wikipedia.org/wiki/' + en.replace(/ /g,'_') + '_Prefecture';
+}
+
+const toc = document.getElementById('toc');
+const wrapEl = document.getElementById('regions');
+REGIONS.forEach((r, i) => {
+  const id = 'r' + i;
+  const a = document.createElement('a'); a.href = '#' + id; a.textContent = r.region; toc.appendChild(a);
+  const sec = document.createElement('div'); sec.className = 'region'; sec.id = id;
+  sec.innerHTML = `<h2>${r.region}</h2><div class="rjp">${r.jp}</div>
+    <div class="grid">${r.items.map(p => `
+      <div class="pcard">
+        <div class="pc-head"><span class="pc-name">${p.en}</span><span class="pc-jp">${p.kanji}</span></div>
+        <div class="pc-blurb">${p.blurb}</div>
+        <div class="pc-links">
+          <a href="${wiki(p.en)}" target="_blank" rel="noopener">Wikipedia ↗</a>
+          <a href="./search.html?pref=${encodeURIComponent(p.kanji)}">Browse akiya →</a>
+        </div>
+      </div>`).join('')}</div>`;
+  wrapEl.appendChild(sec);
+});
+</script>
+</body>
+</html>
