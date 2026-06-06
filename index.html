@@ -190,7 +190,7 @@ h1 em {
 
 /* ── FEATURES SECTION ────────────────────────────────── */
 .features {
-  max-width: 1320px; margin: 0 auto; padding: 80px 40px;
+  max-width: 1440px; margin: 0 auto; padding: 80px 40px;
   border-top: 1px solid var(--border);
 }
 .features-grid {
@@ -213,19 +213,20 @@ h1 em {
 .feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
 .feature-card p { font-size: 12px; color: var(--text2); line-height: 1.65; }
 
-/* Top prefectures by akiya count */
-.topref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-.topref-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--text); transition: border-color .15s, transform .15s; }
-.topref-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-.topref-icon { flex-shrink: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
-.topref-icon svg { width: 44px; height: 44px; display: block; }
-.topref-name { font-size: 14px; font-weight: 700; line-height: 1.2; }
-.topref-count { font-family: var(--mono); font-size: 11px; color: var(--accent2); margin-top: 2px; }
-@media (max-width: 860px) { .topref-grid { grid-template-columns: repeat(2, 1fr); } }
+/* Top prefectures by akiya count — single row of larger cards */
+.topref-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+.topref-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 20px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; text-decoration: none; color: var(--text); transition: border-color .15s, transform .15s; }
+.topref-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+.topref-icon { flex-shrink: 0; width: 72px; height: 72px; display: flex; align-items: center; justify-content: center; }
+.topref-icon svg { width: 72px; height: 72px; display: block; }
+.topref-name { font-size: 16px; font-weight: 700; line-height: 1.2; }
+.topref-count { font-family: var(--mono); font-size: 12px; color: var(--accent2); margin-top: 3px; }
+@media (max-width: 1100px) { .topref-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .topref-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* ── RECENT LISTINGS ─────────────────────────────────── */
 .recent {
-  max-width: 1320px; margin: 0 auto; padding: 0 40px 80px;
+  max-width: 1440px; margin: 0 auto; padding: 0 40px 80px;
 }
 .recent-label {
   font-family: var(--mono); font-size: 9px; letter-spacing: .18em;
@@ -236,8 +237,9 @@ h1 em {
 .recent-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; }
 .recent h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
 .recent-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;
 }
+@media (max-width: 1100px) { .recent-grid { grid-template-columns: repeat(3, 1fr); } }
 .recent-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 10px; overflow: hidden; text-decoration: none; color: var(--text);
@@ -256,7 +258,7 @@ h1 em {
 footer {
   border-top: 1px solid var(--border);
   padding: 24px 40px;
-  max-width: 1320px; margin: 0 auto;
+  max-width: 1440px; margin: 0 auto;
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 12px;
 }
@@ -433,7 +435,7 @@ footer {
 </section>
 
 <!-- ── DISCLAIMER ─────────────────────────────────────────────────────────────── -->
-<section style="max-width:1320px;margin:0 auto;padding:0 40px 40px">
+<section style="max-width:1440px;margin:0 auto;padding:0 40px 40px">
   <div style="padding:14px 16px;background:rgba(232,160,32,.05);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;font-size:12px;line-height:1.7;color:var(--text2)">
     ⚠ <strong style="color:var(--text)">Disclaimer:</strong> Akiya Search aggregates listings automatically from
     third-party websites (SUUMO, LIFULL Akiya Bank and others). All information — including addresses, locations,
@@ -515,14 +517,14 @@ async function loadLanding() {
     const views = await fetchTopViews();
     if (views.length) {
       const byId = {}; withImg.forEach(l => { byId[l.id] = l; });
-      const hot = views.map(v => byId[v.listing_id]).filter(Boolean).slice(0, 8);
+      const hot = views.map(v => byId[v.listing_id]).filter(Boolean).slice(0, 5);
       if (hot.length >= 4) {
         sample = hot;
         const eb = document.getElementById('recent-eyebrow'); if (eb) eb.textContent = 'Most viewed right now';
         const h2 = document.getElementById('recent-h2'); if (h2) h2.textContent = '🔥 Current hot picks';
       }
     }
-    if (!sample.length) sample = withImg.sort(() => Math.random() - 0.5).slice(0, 8);
+    if (!sample.length) sample = withImg.sort(() => Math.random() - 0.5).slice(0, 5);
 
     const grid = document.getElementById('recent-grid');
     if (!sample.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:12px;padding:30px">No listings available</div>'; return; }
@@ -584,12 +586,12 @@ async function renderTopPrefectures(listings) {
   if (!grid) return;
   const counts = {};
   listings.forEach(l => { if (l.prefecture) counts[l.prefecture] = (counts[l.prefecture] || 0) + 1; });
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
   if (!top.length) { grid.innerHTML = ''; return; }
   const geo = await getPrefGeo();
   grid.innerHTML = top.map(([kanji, n]) => {
     const f = geo && geo.byKanji[kanji];
-    const icon = f ? prefOutlineSVG(f) : '<div style="font-family:var(--jp);font-size:22px;color:var(--accent)">家</div>';
+    const icon = f ? prefOutlineSVG(f, 72) : '<div style="font-family:var(--jp);font-size:34px;color:var(--accent)">家</div>';
     const en = PREF_EN[kanji] || kanji;
     return `<a class="topref-card" href="./search.html?pref=${encodeURIComponent(kanji)}">
       <div class="topref-icon">${icon}</div>
