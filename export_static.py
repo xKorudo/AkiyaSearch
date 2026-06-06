@@ -81,7 +81,7 @@ def main():
         if os.path.exists(src):
             shutil.copyfile(src, os.path.join(OUT, fname))
 
-    for subdir in ["js", "css"]:
+    for subdir in ["js", "css", "data"]:
         src_dir = os.path.join(ROOT, subdir)
         dst_dir = os.path.join(OUT, subdir)
         if os.path.isdir(src_dir):

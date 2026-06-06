@@ -624,6 +624,12 @@ window.addEventListener('DOMContentLoaded', () => {
   const curSel = document.getElementById('currency-select');
   if (curSel) curSel.value = userCurrency;
   document.querySelectorAll('.cur-sym').forEach(s => s.textContent = (CUR_SYMBOL||{})[userCurrency] || '€');
+  // Prefecture deep-link from the landing map: ?pref=<kanji>
+  const pref = new URLSearchParams(location.search).get('pref');
+  if (pref) {
+    const sel = document.getElementById('pref-select');
+    if (sel) sel.value = pref;
+  }
   const h = (location.hash || '').replace('#','');
   setSection(['saved','watchlists'].includes(h) ? h : 'search');
 });
