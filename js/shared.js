@@ -216,6 +216,9 @@ async function toggleFav(id, el) {
       .upsert({ user_id: currentUser.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true }));
   } else {
     ({ error } = await supa.from('favorites').delete().eq('user_id', currentUser.id).eq('listing_id', id));
+    // Also clear a Discover 👍 like for this listing so it doesn't reappear in Saved
+    try { await supa.from('swipes').delete().eq('user_id', currentUser.id).eq('listing_id', id); } catch {}
+    if (typeof SWIPES === 'object' && SWIPES) delete SWIPES[id];
   }
   if (error) { console.error('favorite sync failed:', error); showToast('⚠ Could not save favorite: ' + error.message); }
 }
@@ -226,6 +229,12 @@ async function loadCloudFavs() {
   const { data, error } = await supa.from('favorites').select('listing_id').eq('user_id', currentUser.id);
   if (error) { console.error('load favorites failed:', error); return; }
   (data || []).forEach(r => FAVS.add(r.listing_id));
+  // Also surface 👍 likes from Discover (stored as swipes) so they always show
+  // under Saved, even if the favorites write didn't go through.
+  try {
+    const { data: sw } = await supa.from('swipes').select('listing_id,liked').eq('user_id', currentUser.id).eq('liked', true);
+    (sw || []).forEach(r => FAVS.add(r.listing_id));
+  } catch {}
   updateFavCount();
   if (typeof renderList === 'function') renderList();
 }
