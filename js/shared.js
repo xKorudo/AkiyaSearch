@@ -113,8 +113,13 @@ async function initAuth() {
     const { data } = await supa.auth.getSession();
     if (data && data.session) {
       currentUser = data.session.user;
+      updateAuthUI();
       await loadCloudFavs();
       await loadWatchlistData(); await loadNotifs(); await loadSwipes();
+      // Existing session restores as INITIAL_SESSION (not SIGNED_IN), so refresh
+      // any account-only views now that the data has loaded.
+      if (typeof renderWatchlists === 'function') renderWatchlists();
+      if (typeof filter === 'function') filter();
     }
     supa.auth.onAuthStateChange(async (event, session) => {
       currentUser = session ? session.user : null;
