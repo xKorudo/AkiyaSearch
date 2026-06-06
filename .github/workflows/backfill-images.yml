@@ -48,7 +48,7 @@ jobs:
             akiya-db-
 
       - name: Backfill detail-page galleries (fresh IP, full budget)
-        run: python enrich_images.py 150
+        run: python enrich_images.py 300
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
