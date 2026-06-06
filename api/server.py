@@ -73,6 +73,12 @@ def refresh():
     return jsonify({"status": "ok"})
 
 
+@app.route("/<path:fname>")
+def static_files(fname):
+    # serve the multi-page app's html + js/ + css/ for local dev
+    return send_from_directory(ROOT, fname)
+
+
 if __name__ == "__main__":
     init = __import__("db.database").database.init_db
     init()

@@ -215,68 +215,47 @@ header { height: 52px; background: var(--surface); border-bottom: 1px solid var(
 .notif-empty { padding: 24px 14px; text-align: center; color: var(--text3); font-size: 12px; }
 
 @media (max-width: 860px) {
-  .disco-img, .disco-ph { height: 220px; }
-  .disco-body { padding: 12px 14px; }
-  .disco-title { font-size: 15px; }
-  .disco-price { font-size: 18px; margin-bottom: 8px; }
-  .disco-specs { grid-template-columns: 1fr 1fr; }
-  .disco-hint { display: none; }
+  /* Same hamburger-dropdown nav as the other pages */
+  header { padding: 0 12px; gap: 10px; }
+  .logo-jp { display: none; }
+  .nav-toggle { display: block; }
+  .main-nav { position: absolute; top: 52px; left: 0; right: 0; flex-direction: column; gap: 0; margin: 0; background: var(--surface); border-bottom: 1px solid var(--border2); padding: 6px; z-index: 200; transform: translateY(-150%); transition: transform .2s; pointer-events: none; }
+  .main-nav.open { transform: translateY(0); pointer-events: all; }
+  .nav-link { width: 100%; padding: 12px 14px; font-size: 14px; }
   .notif-panel { width: calc(100% - 24px); left: 12px; }
   .detail-panel { width: 100vw; max-height: 95vh; height: 95vh; border-radius: 12px 12px 0 0; border: none; top: auto; bottom: 0; left: 0; transform: translateY(4%); }
   .detail-panel.open { transform: translateY(0); }
-}
 
-/* ── MOBILE NAV BAR ──────────────────────────────────────────────────────── */
-@media (max-width: 640px) {
-  .logo-jp { display: none; }
-  header { padding: 0 12px; gap: 8px; }
-
-  .main-nav {
-    position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
-    height: 54px; margin: 0; gap: 0; padding: 0;
-    background: var(--surface); border-top: 1px solid var(--border2);
-    justify-content: space-around;
-  }
-  .nav-link {
-    flex: 1; flex-direction: column; align-items: center; justify-content: center;
-    padding: 5px 0 4px; font-size: 20px; gap: 1px; border-radius: 0;
-  }
-  .nav-label {
-    display: block; font-size: 9px; letter-spacing: .03em;
-    font-family: var(--mono); color: var(--text3);
-  }
-  .nav-link.active .nav-label { color: var(--accent); }
-  .nav-link:hover { background: transparent; }
-
-  .header-right .hbtn:not(#login-btn):not(#profile-btn) { display: none; }
-
-  .disco-img, .disco-ph { height: 150px; }
-
-  /* Disco actions sit above bottom nav */
-  .disco-actions {
-    position: fixed; bottom: 62px; left: 50%; transform: translateX(-50%);
-    z-index: 200; background: var(--surface); border: 1px solid var(--border2);
-    border-radius: 50px; padding: 8px 16px; box-shadow: 0 8px 30px rgba(0,0,0,.6);
-  }
-  .discover-view { padding: 10px 8px 160px; }
-  .disco-card { max-width: 100%; }
+  /* Compact discover card so price + specs read immediately */
+  .discover-view { padding: 12px 12px 28px; }
+  .disco-img, .disco-ph { height: 170px; }
+  .disco-body { padding: 12px 14px; }
+  .disco-title { font-size: 16px; }
+  .disco-price { font-size: 19px; margin-bottom: 8px; }
+  .disco-specs { grid-template-columns: 1fr 1fr; }
+  .disco-actions { gap: 24px; }
+  .disco-btn { width: 58px; height: 58px; font-size: 24px; }
+  .disco-hint { display: none; }
 }
 </style>
 </head>
 <body>
 
 <header>
-  <a class="logo" href="./index.html">🏚 <span>Akiya</span> Search</a>
+  <a class="logo" href="./index.html">🏚 <span>Akiya</span> Search <span class="logo-jp">空き家</span></a>
   <nav class="main-nav" id="main-nav">
-    <a class="nav-link" href="./index.html">🏠<span class="nav-label">Home</span></a>
-    <a class="nav-link" href="./search.html">🔍<span class="nav-label">Search</span></a>
-    <a class="nav-link" href="./map.html">🗺<span class="nav-label">Map</span></a>
-    <a class="nav-link active" href="./discover.html">✨<span class="nav-label">Discover</span></a>
+    <a class="nav-link" href="./index.html">🏠 Home</a>
+    <a class="nav-link" href="./search.html">🔍 Search</a>
+    <a class="nav-link" href="./search.html#saved">♡ Saved <span id="fav-count" class="nav-badge">0</span></a>
+    <a class="nav-link" href="./search.html#watchlists">👁 Watchlists</a>
+    <a class="nav-link" href="./map.html">🗺 Map</a>
+    <a class="nav-link active" href="./discover.html">✨ Discover</a>
   </nav>
   <div class="header-right">
     <button class="hbtn" id="notif-btn" onclick="toggleNotifs()" title="Notifications" style="position:relative">🔔<span id="notif-badge" class="notif-badge" style="display:none">0</span></button>
     <button class="hbtn" id="login-btn" onclick="openAuth()">Sign in</button>
     <button class="hbtn" id="profile-btn" onclick="toggleProfile()" title="Profile" style="display:none">👤</button>
+    <button class="nav-toggle" id="nav-toggle" onclick="toggleMobileNav()">☰</button>
   </div>
 </header>
 
@@ -334,25 +313,13 @@ header { height: 52px; background: var(--surface); border-bottom: 1px solid var(
 <script src="js/shared.js"></script>
 <script>
 // ── DISCOVER PAGE SPECIFIC ────────────────────────────────────────────────────
-let discoQueue = [], discoCurrent = null, discoMode = 'swipe';
+let discoQueue = [], discoCurrent = null;
 const activeView = 'discover';
 
 function onDataLoaded() {
   FILTERED = ALL.slice();
   renderDiscover();
 }
-
-function discoHeader(active) {
-  const likedN = Object.values(SWIPES).filter(Boolean).length;
-  const total = Object.keys(SWIPES).length;
-  return `<div class="disco-head">
-    <button class="hbtn ${active==='swipe'?'active':''}" onclick="setDiscoMode('swipe')">✨ Discover</button>
-    <button class="hbtn ${active==='likes'?'active':''}" onclick="setDiscoMode('likes')">♥ My likes · ${likedN}</button>
-    <span class="disco-progress">${total ? `${total} rated` : 'Swipe to teach it your taste'}</span>
-  </div>`;
-}
-
-function setDiscoMode(m) { discoMode = m; if (m === 'swipe') { discoQueue = []; renderDiscover(); } else renderDiscoLikes(); }
 
 function buildDiscoQueue() {
   const liked = Object.keys(SWIPES).filter(id => SWIPES[id]);
@@ -445,37 +412,37 @@ function attachDiscoSwipe() {
 
 function renderDiscover() {
   const el = document.getElementById('discover-view');
-  if (discoMode === 'likes') return renderDiscoLikes();
   if (!discoQueue.length) buildDiscoQueue();
   discoCurrent = discoQueue.shift();
   if (!discoCurrent) {
-    el.innerHTML = discoHeader('swipe') + `<div class="watch-empty">No more matches right now. Try clearing filters, or come back as new houses arrive.</div>`;
+    el.innerHTML = `<div class="watch-empty">No more matches right now. Try clearing filters, or come back as new houses arrive.</div>`;
     return;
   }
   const l = discoCurrent;
-  el.innerHTML = discoHeader('swipe') + discoRichCard(l) + `
+  const total = Object.keys(SWIPES).length;
+  el.innerHTML = `<div class="disco-progress" style="margin-bottom:12px">${total ? total + ' rated · 👍 likes are saved to your Favorites' : 'Swipe to teach it your taste · 👍 likes go to your Favorites'}</div>`
+    + discoRichCard(l) + `
     <div class="disco-actions">
       <button class="disco-btn dislike" onclick="swipe(false)" title="Not for me (←)">👎</button>
       <button class="disco-btn like" onclick="swipe(true)" title="Like it (→)">👍</button>
     </div>
-    <div class="disco-hint">← dislike · → like · click photos to zoom</div>`;
+    <div class="disco-hint">swipe the card · or ← dislike / → like · tap photos to zoom</div>`;
   attachDiscoSwipe();
-}
-
-function renderDiscoLikes() {
-  const el = document.getElementById('discover-view');
-  const liked = Object.keys(SWIPES).filter(id => SWIPES[id]).map(listingById).filter(Boolean);
-  el.innerHTML = discoHeader('likes') + (liked.length
-    ? `<div class="disco-likes-grid">${liked.map(cardHTML).join('')}</div>`
-    : `<div class="watch-empty">No likes yet — swipe 👍 in Discover and they'll collect here.</div>`);
 }
 
 function swipe(liked) {
   if (!discoCurrent) return;
-  SWIPES[discoCurrent.id] = liked;
-  saveSwipe(discoCurrent.id, liked);
+  const id = discoCurrent.id;
+  SWIPES[id] = liked;
+  saveSwipe(id, liked);
+  // A 👍 also saves to Favorites (so all your likes live in one place: Saved)
+  if (liked && currentUser && !FAVS.has(id)) {
+    FAVS.add(id); if (typeof updateFavCount === 'function') updateFavCount();
+    if (supa) supa.from('favorites').upsert({ user_id: currentUser.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true });
+  }
   if (Object.keys(SWIPES).length % 4 === 0) discoQueue = [];
   renderDiscover();
+  const v = document.getElementById('discover-view'); if (v) v.scrollTop = 0;
 }
 
 document.addEventListener('keydown', e => {

@@ -619,7 +619,12 @@ window.addEventListener('DOMContentLoaded', () => {
   const curSel = document.getElementById('currency-select');
   if (curSel) curSel.value = userCurrency;
   document.querySelectorAll('.cur-sym').forEach(s => s.textContent = (CUR_SYMBOL||{})[userCurrency] || '€');
-  setSection('search');
+  const h = (location.hash || '').replace('#','');
+  setSection(['saved','watchlists'].includes(h) ? h : 'search');
+});
+window.addEventListener('hashchange', () => {
+  const h = (location.hash || '').replace('#','');
+  if (['search','saved','watchlists'].includes(h)) setSection(h);
 });
 </script>
 </body>
