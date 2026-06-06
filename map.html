@@ -437,7 +437,7 @@ function renderMapList() {
     const abColor = airbnbColor(ab);
     const img = l.image_url ? `<img src="${l.image_url}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">` : '';
     const ph = `<div class="lcard-img-placeholder" ${l.image_url ? 'style="display:none"' : ''}>家</div>`;
-    return `<a class="lcard ${selectedId===l.id?'selected':''}" onclick="return cardClick(event,'${l.id}')">
+    return `<a class="lcard ${selectedId===l.id?'selected':''}" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank" rel="noopener">
       <div class="lcard-img-wrap">${img}${ph}
         <div class="lcard-badges">${l.price_jpy===0?'<span class="badge badge-free">FREE</span>':''}</div>
         <span class="badge-source">${l.source||''}</span>
@@ -505,11 +505,10 @@ function renderMarkers() {
       <div class="map-popup-price">${priceLine}</div>
       <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px">Airbnb: ${ab}/99 · ${l.source||''}</div>
       <a href="${gmapsUrl(l)}" target="_blank" style="display:inline-block;font-size:10px;color:var(--blue);text-decoration:none;margin-top:4px">📍 Google Maps</a>
-      <div class="map-popup-btn" onclick="openDetail('${l.id}')">View Details →</div>
+      <a class="map-popup-btn" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank" rel="noopener" style="text-decoration:none;display:block">View full page →</a>
     </div>`, { maxWidth: 240 });
     mk.on('click', () => {
-      openDetail(l.id);
-      document.querySelector(`.lcard[onclick*="${l.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.querySelector(`.lcard[href*="${l.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
     markers.push(mk);
   });
