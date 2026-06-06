@@ -262,9 +262,21 @@ footer {
   footer { padding: 20px; }
 }
 @media (max-width: 480px) {
-  .feature-btns { flex-direction: column; }
-  .feat-btn { min-width: unset; flex-direction: row; align-items: center; gap: 10px; }
-  .feat-icon { font-size: 18px; margin-bottom: 0; }
+  /* Header: hide live badge, tighten padding so it doesn't overflow */
+  header { padding: 0 12px; gap: 8px; }
+  .live-badge { display: none; }
+
+  /* Hero: smaller type + tighter spacing */
+  .hero { padding: 64px 16px 32px; }
+  h1 { font-size: 30px; }
+  .hero-sub { font-size: 15px; margin-bottom: 28px; }
+
+  /* Feature buttons: override grid → vertical flex so each button is full-width */
+  .feature-btns { display: flex; flex-direction: column; max-width: 100%; margin-bottom: 28px; }
+  .feat-btn { min-height: unset; padding: 12px 16px; flex-direction: row; align-items: center; gap: 12px; }
+  .feat-icon { font-size: 20px; margin-bottom: 0; flex-shrink: 0; }
+  .feat-sub { display: none; }
+
   .recent-grid { grid-template-columns: 1fr; }
 }
 </style>

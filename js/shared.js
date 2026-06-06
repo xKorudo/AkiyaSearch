@@ -66,9 +66,15 @@ function convPriceShort(jpy) {
   return sym + Math.round(v);
 }
 
-// Google Maps search link for a listing's address (best-effort, Japanese address)
+// Google Maps link — coordinates if available, otherwise Japanese title (contains full address)
 function gmapsUrl(l) {
-  const q = encodeURIComponent(`${l.prefecture || ''}${l.city || ''} 日本`.trim());
+  if (l.lat && l.lng) {
+    return `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`;
+  }
+  // Japanese titles from SUUMO/LIFULL contain the full scraped address; Akiya2 titles are English
+  const hasJpTitle = l.title && /[　-鿿]/.test(l.title);
+  const addr = hasJpTitle ? l.title : `${l.prefecture||''}${l.city||''}`;
+  const q = encodeURIComponent(`${addr} 日本`.trim());
   return `https://www.google.com/maps/search/?api=1&query=${q}`;
 }
 
@@ -705,7 +711,6 @@ function cardHTML(l) {
     <div class="lcard-img-wrap">
       ${img}${placeholder}
       <div class="lcard-badges">${badgeFree}${badgeCheap}${badgeAB}</div>
-      <span class="badge-source">${l.source||''}</span>
       <button class="fav-btn ${isFav(l.id)?'on':''}" onclick="event.stopPropagation();event.preventDefault();toggleFav('${l.id}',this)" title="Save to favorites">${isFav(l.id)?'♥':'♡'}</button>
     </div>
     <div class="lcard-body">
