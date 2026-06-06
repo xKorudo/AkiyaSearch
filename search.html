@@ -77,6 +77,7 @@ select:focus { border-color: var(--accent); }
 .badge-free { background: var(--green); color: #000; }
 .badge-cheap { background: var(--accent); color: #000; }
 .badge-airbnb-hot { background: var(--red); color: #fff; }
+.badge-hot { background: #ff5a3c; color: #fff; }
 .badge-airbnb-ok { background: var(--purple); color: #fff; }
 .badge-source { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,.7); color: var(--text2); padding: 2px 6px; border-radius: 3px; font-size: 9px; font-family: var(--mono); }
 .lcard-body { padding: 12px 14px 10px; flex: 1; }
@@ -350,6 +351,7 @@ select:focus { border-color: var(--accent); }
     <option value="">Sort: Default</option>
     <option value="price_asc">Price: Low → High</option>
     <option value="price_desc">Price: High → Low</option>
+    <option value="views_desc">Most viewed 🔥</option>
     <option value="airbnb_desc">Airbnb Score ↓</option>
     <option value="size_desc">Size: Largest first</option>
     <option value="year_asc">Oldest first</option>
@@ -367,6 +369,7 @@ select:focus { border-color: var(--accent); }
   </select>
   <div class="toolbar-sep"></div>
   <div class="filter-tags">
+    <button class="ftag" data-tag="hot" onclick="toggleTag(this,'hot')">🔥 HOT</button>
     <button class="ftag" data-tag="free" onclick="toggleTag(this,'free')">FREE</button>
     <button class="ftag" data-tag="kominka" onclick="toggleTag(this,'kominka')">KOMINKA</button>
     <button class="ftag" data-tag="renovated" onclick="toggleTag(this,'renovated')">RENOVATED</button>
@@ -505,6 +508,7 @@ function filter() {
     const cur = inCur(l.price_jpy);
     if (!isNaN(pMin)) { if (cur == null || cur < pMin) return false; }
     if (!isNaN(pMax)) { if (cur == null || cur > pMax) return false; }
+    if (activeTags.has('hot') && !isHot(l.id)) return false;
     if (activeTags.has('free') && l.price_jpy !== 0) return false;
     if (activeTags.has('airbnb') && calcAirbnb(l) < 70) return false;
     const txt = ((l.title||'')+(l.description||'')+(l.tags||[]).join(' ')).toLowerCase();
@@ -518,6 +522,7 @@ function filter() {
 
   if (sort === 'price_asc') FILTERED.sort((a,b) => (a.price_jpy??Infinity)-(b.price_jpy??Infinity));
   else if (sort === 'price_desc') FILTERED.sort((a,b) => (b.price_jpy??-1)-(a.price_jpy??-1));
+  else if (sort === 'views_desc') FILTERED.sort((a,b) => viewCount(b.id)-viewCount(a.id));
   else if (sort === 'airbnb_desc') FILTERED.sort((a,b) => calcAirbnb(b)-calcAirbnb(a));
   else if (sort === 'size_desc') FILTERED.sort((a,b) => (b.size_m2??0)-(a.size_m2??0));
   else if (sort === 'year_asc') FILTERED.sort((a,b) => (a.built_year??9999)-(b.built_year??9999));

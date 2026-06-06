@@ -13,6 +13,40 @@ let userCurrency = localStorage.getItem('akiya_currency') || 'EUR';
 let supa = null, currentUser = null, FAVS = new Set(), favView = false, authMode = 'signin';
 let WATCHLISTS = [], NOTIFS = [], notifSeenAt = null;
 
+// ── VIEW COUNTS / "HOT" ───────────────────────────────────────────────────────
+let VIEWS = {};            // listing_id -> view count (from Supabase)
+let HOT_THRESHOLD = Infinity;
+const HOT_MIN_VIEWS = 5;   // never call something hot below this
+function isHot(id) { return (VIEWS[id] || 0) >= HOT_THRESHOLD; }
+function viewCount(id) { return VIEWS[id] || 0; }
+
+// Load aggregate view counts (anonymous-readable) and derive the "hot" threshold.
+async function loadViews() {
+  if (!supa) return;
+  try {
+    const { data, error } = await supa.from('listing_views')
+      .select('listing_id,views').order('views', { ascending: false }).limit(2000);
+    if (error || !data) return;
+    VIEWS = {};
+    data.forEach(r => { VIEWS[r.listing_id] = r.views; });
+    // Hot = top ~10% of viewed listings, but at least HOT_MIN_VIEWS views.
+    const counts = data.map(r => r.views).filter(v => v >= HOT_MIN_VIEWS);
+    HOT_THRESHOLD = counts.length
+      ? Math.max(HOT_MIN_VIEWS, counts[Math.floor(counts.length * 0.10)] || HOT_MIN_VIEWS)
+      : Infinity;
+    // Re-render whatever view is showing now that we know what's hot.
+    if (typeof filter === 'function') filter();
+    else if (typeof renderList === 'function') renderList();
+  } catch { /* table not set up yet — feature stays dormant */ }
+}
+
+// Count a view (detail opened). Fire-and-forget; optimistic local bump.
+function bumpView(id) {
+  if (!id) return;
+  VIEWS[id] = (VIEWS[id] || 0) + 1;
+  if (supa) { try { supa.rpc('bump_listing_view', { lid: id }); } catch {} }
+}
+
 // ── LEGAL DISCLAIMER ─────────────────────────────────────────────────────────
 // Reusable notice: listing data is aggregated from third-party sources and may be
 // inaccurate, incomplete, outdated or already sold. Limits our liability.
@@ -110,6 +144,7 @@ async function initAuth() {
   if (typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_ANON_KEY !== 'undefined' &&
       SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
     supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    loadViews();   // load aggregate view counts (anonymous OK) for the 🔥 HOT badge
     const { data } = await supa.auth.getSession();
     if (data && data.session) {
       currentUser = data.session.user;
@@ -717,6 +752,7 @@ function cardHTML(l) {
   const badgeFree = l.price_jpy === 0 ? '<span class="badge badge-free">FREE</span>' : '';
   const badgeCheap = (l.price_jpy > 0 && l.price_jpy < 2000000) ? '<span class="badge badge-cheap">CHEAP</span>' : '';
   const badgeAB = ab >= 75 ? '<span class="badge badge-airbnb-hot">AIRBNB ★</span>' : ab >= 60 ? '<span class="badge badge-airbnb-ok">AIRBNB</span>' : '';
+  const badgeHot = isHot(l.id) ? '<span class="badge badge-hot">🔥 HOT</span>' : '';
 
   const img = l.image_url
     ? `<img src="${l.image_url}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
@@ -740,7 +776,7 @@ function cardHTML(l) {
   <a class="lcard" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank">
     <div class="lcard-img-wrap">
       ${img}${placeholder}
-      <div class="lcard-badges">${badgeFree}${badgeCheap}${badgeAB}</div>
+      <div class="lcard-badges">${badgeHot}${badgeFree}${badgeCheap}${badgeAB}</div>
       <button class="fav-btn ${isFav(l.id)?'on':''}" onclick="event.stopPropagation();event.preventDefault();toggleFav('${l.id}',this)" title="Save to favorites">${isFav(l.id)?'♥':'♡'}</button>
     </div>
     <div class="lcard-body">
@@ -757,7 +793,7 @@ function cardHTML(l) {
       </div>
     </div>
     <div class="lcard-footer">
-      <div class="lcard-tags">${tags}</div>
+      <div class="lcard-tags">${viewCount(l.id) ? `<span class="ltag" title="Times viewed">👁 ${viewCount(l.id)}</span>` : ''}${tags}</div>
       <span class="lcard-link" onclick="event.stopPropagation();event.preventDefault();window.open('${l.source_url}','_blank')">Source →</span>
     </div>
   </a>`;
@@ -812,6 +848,7 @@ function openDetail(id) {
   const l = FILTERED.find(x => x.id === id) || ALL.find(x => x.id === id);
   if (!l) return;
   selectedId = id;
+  bumpView(id);   // count this view toward the 🔥 HOT ranking
   document.querySelectorAll('.lcard').forEach(c => c.classList.toggle('selected', c.onclick?.toString().includes(`'${id}'`)));
 
   const ab = calcAirbnb(l);

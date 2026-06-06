@@ -147,6 +147,7 @@ async function initSupa(){
   const {data}=await supa.auth.getSession();
   if(data&&data.session){currentUser=data.session.user;await loadFavsAndWatchlists();}
   renderActions(CURRENT);   // refresh hearts/watchlist state once cloud data is loaded
+  if(CURRENT&&CURRENT.id){try{supa.rpc('bump_listing_view',{lid:CURRENT.id});}catch{}}  // count this view (🔥 HOT)
 }
 async function loadFavsAndWatchlists(){
   if(!supa||!currentUser)return;
