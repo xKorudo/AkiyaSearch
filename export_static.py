@@ -72,6 +72,9 @@ def main():
         "map.html",
         "discover.html",
         "listing.html",
+        "impressum.html",
+        "terms.html",
+        "privacy.html",
     ]
     for fname in static_files:
         src = os.path.join(ROOT, fname)
