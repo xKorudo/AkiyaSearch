@@ -1,12 +1,11 @@
 name: Backfill Details & Deploy
 
-# Dedicated traffic/description backfill. Separate from backfill-images.yml so
-# each gets a fresh IP and full time budget without competing with each other.
-# Offset by 1 hour from the image workflow (*/2 h) so they rarely collide.
+# Dedicated traffic/description backfill (shard 0). Runs on ODD hours at :20 so
+# it never shares a start minute with any other workflow.
 
 on:
   schedule:
-    - cron: "0 1-23/2 * * *"   # every 2 hours starting at 01:00 — 12 runs/day
+    - cron: "20 1-23/2 * * *"   # odd hours at :20 (01:20,03:20,…)
   workflow_dispatch: {}
 
 permissions:

@@ -1,12 +1,11 @@
 name: Backfill Images 2 & Deploy
 
-# Second parallel image backfill — shard 1 of 2. Offset by 30 min from the
-# first instance so they don't start simultaneously, and each gets a distinct
-# fresh IP. Together they double image-backfill throughput per day.
+# Second parallel image backfill — shard 1 of 2. Runs on ODD hours at :00 so it
+# never shares a start time with any other workflow (shard-0 runs EVEN hours).
 
 on:
   schedule:
-    - cron: "30 */2 * * *"   # every 2 hours at :30 — offset from shard-0 run
+    - cron: "0 1-23/2 * * *"   # odd hours at :00 (01,03,…23)
   workflow_dispatch: {}
 
 permissions:
