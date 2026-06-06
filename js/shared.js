@@ -301,6 +301,7 @@ async function signOut() {
   if (supa) await supa.auth.signOut();
   currentUser = null;
   WATCHLISTS = []; NOTIFS = []; FAVS = new Set(); SWIPES = {};   // clear all personal data from memory
+  try { localStorage.removeItem('akiya_aspect_w'); } catch {}    // clear learned taste weights too
   updateFavCount();
   updateAuthUI();
   renderWatchlists();
