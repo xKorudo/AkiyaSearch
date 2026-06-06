@@ -344,25 +344,25 @@ const activeView = 'discover';
 // feature dimensions are up- or down-weighted so future recommendations adapt.
 let aspectMode = localStorage.getItem('akiya_aspect_mode') === '1';
 let pickedAspects = new Set();
+// Each aspect maps to real, structured data we actually have for a listing.
+// `avail(l)` decides whether the chip is shown for the current property.
 const ASPECTS = [
-  { key: 'cheap',    label: '💰 Price',      feats: ['price','free'] },
-  { key: 'size',     label: '📐 Size',       feats: ['size','rooms'] },
-  { key: 'land',     label: '🌳 Land',       feats: ['land'] },
-  { key: 'old',      label: '🏚 Old charm',  feats: ['age','kominka'] },
-  { key: 'new',      label: '✨ Renovated',  feats: ['renovated','newish'] },
-  { key: 'sea',      label: '🌊 Ocean',      feats: ['sea'] },
-  { key: 'onsen',    label: '♨️ Onsen',      feats: ['onsen'] },
-  { key: 'mountain', label: '⛰ Mountain',   feats: ['mountain'] },
-  { key: 'farm',     label: '🌾 Farm/garden',feats: ['farm'] },
-  { key: 'airbnb',   label: '🏠 Rental potential', feats: ['airbnb'] },
+  { key: 'price',   label: '💰 Price',            feats: ['price','free'], avail: l => l.price_jpy != null },
+  { key: 'size',    label: '📐 Size',             feats: ['size'],         avail: l => l.size_m2 != null },
+  { key: 'layout',  label: '🚪 Layout',           feats: ['rooms'],        avail: l => !!l.rooms },
+  { key: 'land',    label: '🌳 Land',             feats: ['land'],         avail: l => l.land_m2 != null },
+  { key: 'built',   label: '📅 Built year',       feats: ['age','newish'], avail: l => !!l.built_year },
+  { key: 'seismic', label: '🛡 Seismic safety',   feats: ['seismic'],      avail: l => !!l.built_year },
+  { key: 'airbnb',  label: '🏠 Rental potential', feats: ['airbnb'],       avail: l => true },
+  { key: 'region',  label: '📍 Region',           feats: [],               avail: l => !!l.prefecture, region: true },
 ];
-function loadAspectW() {
-  const w = {}; FEATS.forEach(k => w[k] = 1);
-  try { const o = JSON.parse(localStorage.getItem('akiya_aspect_w') || '{}'); FEATS.forEach(k => { if (typeof o[k] === 'number') w[k] = o[k]; }); } catch {}
-  return w;
+function loadW(key) {
+  try { const o = JSON.parse(localStorage.getItem(key) || '{}'); return (o && typeof o === 'object') ? o : {}; } catch { return {}; }
 }
-let ASPECT_W = loadAspectW();
+let ASPECT_W = (() => { const w = {}; FEATS.forEach(k => w[k] = 1); const o = loadW('akiya_aspect_w'); FEATS.forEach(k => { if (typeof o[k] === 'number') w[k] = o[k]; }); return w; })();
+let REGION_W = loadW('akiya_region_w');   // prefecture -> weight (default 1)
 function saveAspectW() { try { localStorage.setItem('akiya_aspect_w', JSON.stringify(ASPECT_W)); } catch {} }
+function saveRegionW() { try { localStorage.setItem('akiya_region_w', JSON.stringify(REGION_W)); } catch {} }
 
 function toggleAspectMode() {
   aspectMode = !aspectMode;
@@ -373,13 +373,17 @@ function toggleAspect(key, btn) {
   if (pickedAspects.has(key)) { pickedAspects.delete(key); btn.classList.remove('on'); }
   else { pickedAspects.add(key); btn.classList.add('on'); }
 }
-function applyAspects(liked) {
+function applyAspects(liked, listing) {
   if (!aspectMode || !pickedAspects.size) return false;
   const factor = liked ? 1.4 : 0.6;   // boost liked aspects, dampen disliked ones
-  ASPECTS.forEach(a => { if (pickedAspects.has(a.key)) a.feats.forEach(k => {
-    ASPECT_W[k] = Math.min(5, Math.max(0.1, (ASPECT_W[k] || 1) * factor));
-  }); });
-  saveAspectW();
+  ASPECTS.forEach(a => {
+    if (!pickedAspects.has(a.key)) return;
+    if (a.region && listing && listing.prefecture) {
+      REGION_W[listing.prefecture] = Math.min(5, Math.max(0.1, (REGION_W[listing.prefecture] || 1) * factor));
+    }
+    a.feats.forEach(k => { ASPECT_W[k] = Math.min(5, Math.max(0.1, (ASPECT_W[k] || 1) * factor)); });
+  });
+  saveAspectW(); saveRegionW();
   return true;
 }
 // Weighted cosine similarity using the learned per-feature weights
@@ -388,11 +392,13 @@ function wCos(a, b) {
   FEATS.forEach(k => { const w = ASPECT_W[k] || 1; const x = a[k]*w, y = b[k]*w; d += x*y; na += x*x; nb += y*y; });
   return (na && nb) ? d / (Math.sqrt(na)*Math.sqrt(nb)) : 0;
 }
-function aspectChipsHTML() {
+function aspectChipsHTML(l) {
   if (!aspectMode) return '';
+  const avail = ASPECTS.filter(a => { try { return a.avail(l); } catch { return false; } });
+  if (!avail.length) return '';
   return `<div class="aspect-row">
     <div class="aspect-hint">What stands out? <span>tick what you like/dislike, then 👍 / 👎 (optional)</span></div>
-    <div class="aspect-chips">${ASPECTS.map(a => `<button class="aspect-chip" onclick="toggleAspect('${a.key}',this)">${a.label}</button>`).join('')}</div>
+    <div class="aspect-chips">${avail.map(a => `<button class="aspect-chip" onclick="toggleAspect('${a.key}',this)">${a.label}</button>`).join('')}</div>
   </div>`;
 }
 
@@ -407,10 +413,16 @@ function buildDiscoQueue() {
   const seen = new Set(Object.keys(SWIPES));
   let cand = FILTERED.filter(l => !seen.has(l.id) && l.image_url);
   const likeP = profileVec(liked), dislikeP = profileVec(disliked);
-  if (!likeP) {
+  const regionTerm = l => 0.25 * (((REGION_W[l.prefecture] || 1)) - 1);   // learned region affinity
+  const hasRegionPref = Object.keys(REGION_W).some(k => REGION_W[k] !== 1);
+  if (!likeP && !hasRegionPref) {
     cand = cand.sort(() => Math.random() - 0.5);
   } else {
-    cand.forEach(l => { const f = featurize(l); l._score = wCos(f, likeP) - (dislikeP ? 0.4*wCos(f, dislikeP) : 0); });
+    cand.forEach(l => {
+      const f = featurize(l);
+      const base = likeP ? (wCos(f, likeP) - (dislikeP ? 0.4*wCos(f, dislikeP) : 0)) : 0;
+      l._score = base + regionTerm(l);
+    });
     cand.sort((a, b) => b._score - a._score);
   }
   discoQueue = cand.slice(0, 80);
@@ -507,7 +519,7 @@ function renderDiscover() {
       <button class="aspect-toggle ${aspectMode?'on':''}" onclick="toggleAspectMode()" title="Tick what you like/dislike to train recommendations">🎯 Refine my taste${aspectMode?' · ON':''}</button>
     </div>`
     + discoRichCard(l)
-    + aspectChipsHTML()
+    + aspectChipsHTML(l)
     + `
     <div class="disco-actions">
       <button class="disco-btn dislike" onclick="swipe(false)" title="Not for me (←)">👎</button>
@@ -522,8 +534,8 @@ function swipe(liked) {
   const id = discoCurrent.id;
   SWIPES[id] = liked;
   saveSwipe(id, liked);
-  const aspectsChanged = applyAspects(liked);   // up/down-weight ticked aspects
-  if (aspectsChanged) discoQueue = [];           // re-rank immediately with new weights
+  const aspectsChanged = applyAspects(liked, discoCurrent);   // up/down-weight ticked aspects
+  if (aspectsChanged) discoQueue = [];                        // re-rank immediately with new weights
   // A 👍 also saves to Favorites (so all your likes live in one place: Saved)
   if (liked) {
     (async () => {

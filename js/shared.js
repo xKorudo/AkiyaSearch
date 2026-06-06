@@ -301,7 +301,7 @@ async function signOut() {
   if (supa) await supa.auth.signOut();
   currentUser = null;
   WATCHLISTS = []; NOTIFS = []; FAVS = new Set(); SWIPES = {};   // clear all personal data from memory
-  try { localStorage.removeItem('akiya_aspect_w'); } catch {}    // clear learned taste weights too
+  try { localStorage.removeItem('akiya_aspect_w'); localStorage.removeItem('akiya_region_w'); } catch {}    // clear learned taste weights too
   updateFavCount();
   updateAuthUI();
   renderWatchlists();
@@ -1118,7 +1118,7 @@ function prefToEN(p) { return PREF_EN[p] || p || 'Japan'; }
 function conditionEN(c) { return COND_EN[c] || c || ''; }
 
 // ── DISCOVER — content-based recommender (like/dislike) ───────────────────────
-const FEATS = ['price','size','land','age','airbnb','rooms','free','kominka','sea','onsen','renovated','farm','mountain','newish'];
+const FEATS = ['price','size','land','age','airbnb','rooms','free','seismic','kominka','sea','onsen','renovated','farm','mountain','newish'];
 
 function featurize(l) {
   const t = ((l.title_en||'')+(l.title||'')+(l.description||'')+(l.description_en||'')).toLowerCase();
@@ -1131,6 +1131,7 @@ function featurize(l) {
     airbnb: calcAirbnb(l)/99,
     rooms: Math.min(1, (parseInt(l.rooms)||3)/8),
     free: l.price_jpy === 0 ? 1 : 0,
+    seismic: l.built_year ? (l.built_year >= 2000 ? 1 : l.built_year >= 1981 ? 0.5 : 0) : 0.3,  // newer = safer
     kominka: /古民家|kominka|machiya|町家/.test(t) ? 1 : 0,
     sea: /海|ocean|beach|sea|coast/.test(t) ? 1 : 0,
     onsen: /温泉|onsen|hot spring/.test(t) ? 1 : 0,
