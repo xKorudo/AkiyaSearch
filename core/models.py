@@ -23,3 +23,4 @@ class Listing:
     built_year: Optional[int] = None
     condition: str = ""
     images: str = ""   # JSON array of image URLs
+    traffic: str = ""  # nearest transit lines (交通)

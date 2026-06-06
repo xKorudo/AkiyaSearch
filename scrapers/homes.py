@@ -85,7 +85,7 @@ BASE = "https://suumo.jp/jj/bukken/ichiran/JJ012FC001/?{}&pn={}"
 
 
 def _parse_spec(spec_text: str):
-    """Parse SUUMO dottable spec into (price, city, size_m2, land_m2, rooms, built_year)."""
+    """Parse SUUMO dottable spec into (price, city, size_m2, land_m2, rooms, built_year, traffic)."""
     t = spec_text
 
     # Price: anchor on the sale-price field (販売価格 / 価格) so we never grab a
@@ -127,7 +127,13 @@ def _parse_spec(spec_text: str):
     if bm:
         built_year = int(bm.group(1))
 
-    return price, price_label, city, size_m2, land_m2, rooms, built_year
+    # Traffic / nearest station: 交通 | JR○○線 ○○駅 徒歩X分
+    traffic = ""
+    tm = re.search(r"交通\s*\|\s*([^\|]+)", t)
+    if tm:
+        traffic = tm.group(1).strip()[:200]
+
+    return price, price_label, city, size_m2, land_m2, rooms, built_year, traffic
 
 
 def _fetch_cards(session, url):
@@ -236,7 +242,7 @@ def scrape(max_pages=3):
                     if re.search(r"賃貸|家賃|賃料|月額|月[\d,]+\s*万", title + spec_text):
                         continue
 
-                    price, price_label, city, size_m2, land_m2, rooms, built_year = _parse_spec(spec_text)
+                    price, price_label, city, size_m2, land_m2, rooms, built_year, traffic = _parse_spec(spec_text)
 
                     results.append(Listing(
                         id="",
@@ -255,6 +261,7 @@ def scrape(max_pages=3):
                         built_year=built_year,
                         condition="",
                         images=json.dumps(all_imgs),
+                        traffic=traffic,
                     ))
                     pref_count += 1
 

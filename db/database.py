@@ -29,9 +29,16 @@ def init_db():
         rooms TEXT,
         built_year INTEGER,
         condition TEXT,
-        images TEXT
+        images TEXT,
+        traffic TEXT DEFAULT ''
     )
     """)
+
+    # Migration: add traffic column to existing DBs
+    try:
+        c.execute("ALTER TABLE listings ADD COLUMN traffic TEXT DEFAULT ''")
+    except Exception:
+        pass  # column already exists
 
     conn.commit()
     conn.close()
@@ -81,6 +88,39 @@ def listings_needing_images(min_images=5, limit=40):
     return out[:limit]
 
 
+def listings_needing_traffic(limit=600):
+    """SUUMO listings that still have no traffic/transit info — for backfill."""
+    conn = sqlite3.connect(DB)
+    rows = conn.execute(
+        "SELECT id, source_url FROM listings "
+        "WHERE source='SUUMO' AND source_url LIKE 'http%' "
+        "AND (traffic IS NULL OR traffic = '') "
+        "ORDER BY rowid DESC"
+    ).fetchall()
+    conn.close()
+    return rows[:limit]
+
+
+def update_detail_fields(listing_id, traffic=None, description=None):
+    """Patch traffic and/or description scraped from a SUUMO detail page."""
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    if traffic and description:
+        c.execute(
+            "UPDATE listings SET traffic=?, description=CASE WHEN description IS NULL OR description='' OR description LIKE '%の中古物件' THEN ? ELSE description END WHERE id=?",
+            (traffic, description, listing_id),
+        )
+    elif traffic:
+        c.execute("UPDATE listings SET traffic=? WHERE id=?", (traffic, listing_id))
+    elif description:
+        c.execute(
+            "UPDATE listings SET description=CASE WHEN description IS NULL OR description='' OR description LIKE '%の中古物件' THEN ? ELSE description END WHERE id=?",
+            (description, listing_id),
+        )
+    conn.commit()
+    conn.close()
+
+
 def update_images(listing_id, images_json, first_image=None):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -117,8 +157,16 @@ def upsert(listing):
     except Exception:
         pass
 
+    # Don't overwrite a backfilled traffic value with an empty one from the list-page scrape
+    try:
+        row2 = c.execute("SELECT traffic FROM listings WHERE id=?", (listing.id,)).fetchone()
+        if row2 and row2[0] and not listing.traffic:
+            listing.traffic = row2[0]
+    except Exception:
+        pass
+
     c.execute("""
-    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
         listing.id,
         listing.title,
@@ -140,6 +188,7 @@ def upsert(listing):
         listing.built_year,
         listing.condition,
         listing.images,
+        listing.traffic,
     ))
 
     conn.commit()

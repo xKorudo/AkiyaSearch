@@ -868,7 +868,8 @@ function openDetail(id) {
     ${galleryHTML}
     <div class="dp-body">
       <div class="dp-location">${prefEN}${l.city ? ' · '+l.city : ''} · ${l.source||''}</div>
-      <a href="${gmapsUrl(l)}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--blue);text-decoration:none;margin-bottom:8px">📍 Open address in Google Maps</a>
+      <a href="${gmapsUrl(l)}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--blue);text-decoration:none;margin-bottom:${l.traffic?'4px':'8px'}">📍 Open address in Google Maps</a>
+      ${l.traffic ? `<div style="font-size:11px;color:var(--text2);font-family:var(--mono);margin-bottom:8px;line-height:1.6">🚉 ${l.traffic.replace(/\n/g,' · ')}</div>` : ''}
       <div class="dp-title">${l.title_en || l.title}</div>
       ${l.title_en ? `<div style="font-family:var(--jp);font-size:12px;color:var(--text3);margin-bottom:12px">${l.title}</div>` : ''}
       <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
