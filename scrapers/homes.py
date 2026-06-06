@@ -182,6 +182,18 @@ def scrape(max_pages=3):
         "Referer": "https://suumo.jp/",
     })
 
+    existing_urls = set()
+    try:
+        import sqlite3 as _sqlite3
+        from db.database import DB as _DB
+        _conn = _sqlite3.connect(_DB)
+        existing_urls = set(r[0] for r in _conn.execute(
+            "SELECT source_url FROM listings WHERE source='SUUMO'"
+        ).fetchall())
+        _conn.close()
+    except Exception:
+        pass
+
     results = []
     consecutive_blocked = 0
 
@@ -244,6 +256,37 @@ def scrape(max_pages=3):
 
                     price, price_label, city, size_m2, land_m2, rooms, built_year, traffic = _parse_spec(spec_text)
 
+                    # Description from list-page comment block (no extra request)
+                    desc_el = card.select_one(".property_unit-comment, .cassette-bukken-shousai-txt, [class*='comment']")
+                    list_desc = desc_el.get_text(" ", strip=True)[:400] if desc_el else ""
+
+                    # Detail page fetch for new listings
+                    detail_desc = ""
+                    detail_traffic = ""
+                    if href and href not in existing_urls:
+                        try:
+                            dr = session.get(href, timeout=12)
+                            if dr.status_code == 200 and len(dr.text) > 5000:
+                                dsoup = BeautifulSoup(dr.text, "html.parser")
+                                for sel in [".detail-box__text", "[class*='bukkenDetail-appeal']",
+                                            "[class*='bk-outline__comment']", "[class*='appeal']"]:
+                                    el = dsoup.select_one(sel)
+                                    if el and len(el.get_text(strip=True)) > 20:
+                                        detail_desc = el.get_text(" ", strip=True)[:500]
+                                        break
+                                for th in dsoup.select("th, dt"):
+                                    if th.get_text(strip=True) == "交通":
+                                        td = th.find_next_sibling()
+                                        if td:
+                                            detail_traffic = td.get_text(" ", strip=True)[:300]
+                                        break
+                        except Exception:
+                            pass
+                        time.sleep(random.uniform(1, 2))
+
+                    description = detail_desc or list_desc or f"{pref_jp}の中古物件"
+                    final_traffic = detail_traffic or traffic
+
                     results.append(Listing(
                         id="",
                         title=title,
@@ -256,12 +299,12 @@ def scrape(max_pages=3):
                         image_url=img,
                         source_url=href or url,
                         source="SUUMO",
-                        description=f"{pref_jp}の中古物件",
+                        description=description,
                         rooms=rooms,
                         built_year=built_year,
                         condition="",
                         images=json.dumps(all_imgs),
-                        traffic=traffic,
+                        traffic=final_traffic,
                     ))
                     pref_count += 1
 

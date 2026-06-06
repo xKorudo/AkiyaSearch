@@ -64,9 +64,13 @@ def pref_counts(source=None):
         return {}
 
 
-def listings_needing_images(min_images=5, limit=40):
+def listings_needing_images(min_images=5, limit=40, shard=None, total_shards=2):
     """Return (id, source_url, current_image_count) for SUUMO listings whose
-    stored image set is small (i.e. only the list-page thumbnails)."""
+    stored image set is small (i.e. only the list-page thumbnails).
+
+    When shard is not None, only returns the subset of rows where
+    enumerate-index % total_shards == shard, enabling parallel workers to
+    process non-overlapping slices of the backlog."""
     import json
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -85,11 +89,19 @@ def listings_needing_images(min_images=5, limit=40):
             n = 0
         if n < min_images:
             out.append((lid, url, n))
+
+    if shard is not None:
+        out = [x for i, x in enumerate(out) if i % total_shards == shard]
+
     return out[:limit]
 
 
-def listings_needing_traffic(limit=600):
-    """SUUMO listings that still have no traffic/transit info — for backfill."""
+def listings_needing_traffic(limit=600, shard=None, total_shards=2):
+    """SUUMO listings that still have no traffic/transit info — for backfill.
+
+    When shard is not None, only returns the subset of rows where
+    enumerate-index % total_shards == shard, enabling parallel workers to
+    process non-overlapping slices of the backlog."""
     conn = sqlite3.connect(DB)
     rows = conn.execute(
         "SELECT id, source_url FROM listings "
@@ -98,7 +110,12 @@ def listings_needing_traffic(limit=600):
         "ORDER BY rowid DESC"
     ).fetchall()
     conn.close()
-    return rows[:limit]
+
+    out = list(rows)
+    if shard is not None:
+        out = [x for i, x in enumerate(out) if i % total_shards == shard]
+
+    return out[:limit]
 
 
 def update_detail_fields(listing_id, traffic=None, description=None):

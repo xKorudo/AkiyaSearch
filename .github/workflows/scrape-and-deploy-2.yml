@@ -1,23 +1,25 @@
-name: Backfill Details & Deploy
+name: Scrape & Deploy 2
 
-# Dedicated traffic/description backfill. Separate from backfill-images.yml so
-# each gets a fresh IP and full time budget without competing with each other.
-# Offset by 1 hour from the image workflow (*/2 h) so they rarely collide.
+# Second scrape runner — offset by 2 hours from scrape-and-deploy.yml so that
+# together the two workflows give ~every-2-hour scrape coverage (runs at
+# 02,06,10,14,18,22 while the first runs at 00,04,08,12,16,20).
 
 on:
   schedule:
-    - cron: "0 1-23/2 * * *"   # every 2 hours starting at 01:00 — 12 runs/day
+    - cron: "0 2-22/4 * * *"    # every 4 hours starting at 02:00
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
+# Shared with backfill-images.yml so scrape + image runs never overlap on the
+# same cached DB (and never compete for the same IP's rate limit).
 concurrency:
   group: akiya-pipeline
   cancel-in-progress: false
 
 jobs:
-  backfill-deploy:
+  scrape-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Install Playwright browser
+      - name: Install Playwright browser (for WAF-protected sources)
         run: python -m playwright install --with-deps chromium
 
       - name: Restore listings DB
@@ -44,11 +46,18 @@ jobs:
           restore-keys: |
             akiya-db-
 
-      - name: Backfill traffic & description (fresh IP, full budget)
-        run: python enrich_details.py 400 --shard 0
+      - name: Scrape (incremental)
+        run: python run_pipeline.py
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Geocode listings to real towns
+        run: python enrich_geo.py
+        continue-on-error: true
+
+      # NOTE: image backfill is its OWN workflow (backfill-images.yml) so it gets
+      # a fresh, un-throttled IP each run instead of competing with the scrape.
 
       - name: Build static snapshot
         run: python export_static.py

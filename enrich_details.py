@@ -54,10 +54,19 @@ def extract_detail_fields(page):
 
 
 def main():
+    import argparse
     from playwright.sync_api import sync_playwright
 
-    limit = int(sys.argv[1]) if len(sys.argv) > 1 else BATCH
-    todo = [(lid, url) for lid, url in listings_needing_traffic(limit=limit)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("limit", nargs="?", type=int, default=BATCH)
+    parser.add_argument("--shard", type=int, default=None)
+    parser.add_argument("--total-shards", type=int, default=2)
+    args = parser.parse_args()
+    limit = args.limit
+    shard = args.shard
+    total_shards = args.total_shards
+
+    todo = [(lid, url) for lid, url in listings_needing_traffic(limit=limit, shard=shard, total_shards=total_shards)
             if "suumo.jp" in (url or "")]
     print(f"Listings needing traffic/description: {len(todo)}", flush=True)
 

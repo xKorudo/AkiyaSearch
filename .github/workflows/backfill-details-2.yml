@@ -1,12 +1,12 @@
-name: Backfill Details & Deploy
+name: Backfill Details 2 & Deploy
 
-# Dedicated traffic/description backfill. Separate from backfill-images.yml so
-# each gets a fresh IP and full time budget without competing with each other.
-# Offset by 1 hour from the image workflow (*/2 h) so they rarely collide.
+# Second traffic/description backfill shard. Runs offset by 30 minutes from
+# backfill-details.yml so both get fresh IPs at different times and together
+# cover the full listing backlog (shard 0 vs shard 1).
 
 on:
   schedule:
-    - cron: "0 1-23/2 * * *"   # every 2 hours starting at 01:00 — 12 runs/day
+    - cron: "31 1-23/2 * * *"   # every 2 hours starting at 01:31 — offset from shard 0 at :01
   workflow_dispatch: {}
 
 permissions:
@@ -44,8 +44,8 @@ jobs:
           restore-keys: |
             akiya-db-
 
-      - name: Backfill traffic & description (fresh IP, full budget)
-        run: python enrich_details.py 400 --shard 0
+      - name: Backfill traffic & description (fresh IP, shard 1)
+        run: python enrich_details.py 400 --shard 1
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
