@@ -1,7 +1,9 @@
 import hashlib
 
 def make_hash(l):
-    raw = (l.title + l.prefecture + l.source_url).encode("utf-8")
+    # Key on source_url only — the title can change (e.g. SUUMO date prefix)
+    # but the URL is stable per property.
+    raw = l.source_url.encode("utf-8")
     return hashlib.md5(raw).hexdigest()
 
 

@@ -260,7 +260,7 @@ def scrape(max_pages=3):
                     desc_el = card.select_one(".property_unit-comment, .cassette-bukken-shousai-txt, [class*='comment']")
                     list_desc = desc_el.get_text(" ", strip=True)[:400] if desc_el else ""
 
-                    # Detail page fetch for new listings
+                    # Detail page fetch for new listings only
                     detail_desc = ""
                     detail_traffic = ""
                     if href and href not in existing_urls:

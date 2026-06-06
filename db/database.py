@@ -159,6 +159,23 @@ def upsert(listing):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
+    # Stable dedup: if this source_url already exists under a different id
+    # (e.g. SUUMO changed the title prefix), adopt the existing id and delete
+    # any extra duplicates so we update in-place instead of creating a new row.
+    try:
+        dup = c.execute(
+            "SELECT id FROM listings WHERE source_url=? AND id!=? LIMIT 1",
+            (listing.source_url, listing.id)
+        ).fetchone()
+        if dup:
+            listing.id = dup[0]
+            c.execute(
+                "DELETE FROM listings WHERE source_url=? AND id!=?",
+                (listing.source_url, listing.id)
+            )
+    except Exception:
+        pass
+
     # Don't let a re-scrape downgrade a backfilled gallery: if the stored row
     # already has MORE images than this scrape's (list-page) set, keep the
     # richer existing gallery + its lead image.

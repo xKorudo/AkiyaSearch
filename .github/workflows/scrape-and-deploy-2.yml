@@ -1,19 +1,16 @@
 name: Scrape & Deploy 2
 
-# Second scrape runner — offset by 2 hours from scrape-and-deploy.yml so that
-# together the two workflows give ~every-2-hour scrape coverage (runs at
-# 02,06,10,14,18,22 while the first runs at 00,04,08,12,16,20).
+# Second scrape instance — offset by 2 hours from the primary workflow
+# (0 */4 * * *) so fresh listings are collected twice as often.
 
 on:
   schedule:
-    - cron: "0 2-22/4 * * *"    # every 4 hours starting at 02:00
+    - cron: "0 2-22/4 * * *"   # every 4 hours at 02,06,10,14,18,22
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
-# Shared with backfill-images.yml so scrape + image runs never overlap on the
-# same cached DB (and never compete for the same IP's rate limit).
 concurrency:
   group: akiya-pipeline
   cancel-in-progress: false
@@ -33,9 +30,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Install Playwright browser (for WAF-protected sources)
-        run: python -m playwright install --with-deps chromium
-
       - name: Restore listings DB
         uses: actions/cache@v4
         with:
@@ -46,18 +40,11 @@ jobs:
           restore-keys: |
             akiya-db-
 
-      - name: Scrape (incremental)
+      - name: Scrape listings
         run: python run_pipeline.py
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-
-      - name: Geocode listings to real towns
-        run: python enrich_geo.py
-        continue-on-error: true
-
-      # NOTE: image backfill is its OWN workflow (backfill-images.yml) so it gets
-      # a fresh, un-throttled IP each run instead of competing with the scrape.
 
       - name: Build static snapshot
         run: python export_static.py

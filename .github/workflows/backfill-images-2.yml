@@ -1,19 +1,17 @@
 name: Backfill Images 2 & Deploy
 
-# Second image-gallery backfill shard. Runs offset by 30 minutes from
-# backfill-images.yml so both get fresh IPs at different times and together
-# cover the full listing backlog (shard 0 vs shard 1).
+# Second parallel image backfill — shard 1 of 2. Offset by 30 min from the
+# first instance so they don't start simultaneously, and each gets a distinct
+# fresh IP. Together they double image-backfill throughput per day.
 
 on:
   schedule:
-    - cron: "30 */2 * * *"     # every 2 hours at :30 — offset from shard 0 at :00
+    - cron: "30 */2 * * *"   # every 2 hours at :30 — offset from shard-0 run
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
-# Shared group with scrape-and-deploy.yml so the two never run at the same time
-# (they share the same cached DB).
 concurrency:
   group: akiya-pipeline
   cancel-in-progress: false
@@ -46,7 +44,7 @@ jobs:
           restore-keys: |
             akiya-db-
 
-      - name: Backfill detail-page galleries (fresh IP, shard 1)
+      - name: Backfill detail-page galleries (fresh IP, full budget)
         run: python enrich_images.py 300 --shard 1
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
