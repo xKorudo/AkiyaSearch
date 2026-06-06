@@ -103,7 +103,7 @@ const prefToEN=p=>PREF_EN[p]||p||'Japan';
 const conditionEN=c=>COND_EN[c]||c||'';
 function fmtYen(j){if(j>=1e8)return'¥'+(j/1e8).toLocaleString('de-DE',{maximumFractionDigits:1})+' Mrd.';if(j>=1e7)return'¥'+(j/1e6).toLocaleString('de-DE',{maximumFractionDigits:1})+' Mio.';if(j>=1e6)return'¥'+(j/1e6).toLocaleString('de-DE',{maximumFractionDigits:2})+' Mio.';return'¥'+j.toLocaleString('de-DE');}
 function convPrice(j){if(j==null)return'';if(userCurrency==='JPY')return'¥'+Math.round(j).toLocaleString('de-DE');return CUR_SYMBOL[userCurrency]+Math.round(j*FX[userCurrency]).toLocaleString('de-DE');}
-function gmapsUrl(l){return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent((l.prefecture||'')+(l.city||'')+' 日本');}
+function gmapsUrl(l){if(l.lat&&l.lng)return'https://www.google.com/maps/search/?api=1&query='+l.lat+','+l.lng;const hasJp=l.title&&/[　-鿿]/.test(l.title);const addr=hasJp?l.title:(l.prefecture||'')+(l.city||'');return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr+' 日本');}
 function bigImg(u){return u&&(u.includes('resizeImage')||u.includes('w='))?u.replace(/([?&])w=\d+/i,'$1w=1200').replace(/([?&])h=\d+/i,'$1h=900'):u;}
 function calcAirbnb(l){let s=50;const t=((l.title||'')+(l.description||'')).toLowerCase();const to=AIRBNB_TOURISM[l.prefecture]||45;s=s*.3+to*.7;if(/海|ocean|beach|sea|coast/.test(t))s+=12;if(/富士|fuji|ski|スキー|温泉|onsen/.test(t))s+=10;if(/古民家|kominka|町家/.test(t))s+=8;if(/リノベ|renovated|良好/.test(t))s+=9;if(/大規模修繕/.test(t))s-=18;if(l.size_m2>=100)s+=8;if(l.size_m2>=150)s+=5;if(l.price_jpy===0)s+=15;else if(l.price_jpy<1e6)s+=12;else if(l.price_jpy<3e6)s+=7;else if(l.price_jpy>=8e6)s-=3;if(l.built_year&&l.built_year<1960)s-=5;if(l.built_year&&l.built_year>1990)s+=4;return Math.min(99,Math.max(5,Math.round(s)));}
 function airbnbColor(s){return s>=75?'var(--green)':s>=55?'var(--accent)':s>=35?'var(--blue)':'var(--text3)';}
@@ -213,6 +213,9 @@ function render(l){
     <div class="actions" id="actions"></div>
     <div class="price-block">${price}</div>
     <div class="specs">${specs}</div>
+
+    ${l.traffic ? `<div class="sec-title">Transit access</div>
+    <div class="card" style="padding:12px 16px;margin-bottom:16px"><div style="font-family:var(--mono);font-size:13px;color:var(--text2);line-height:1.9">${l.traffic.split('\n').filter(Boolean).map(t=>'🚉 '+t.trim()).join('<br>')}</div></div>` : ''}
 
     <div class="sec-title">Building standard & risk</div>
     <div class="card">

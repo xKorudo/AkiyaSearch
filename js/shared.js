@@ -707,7 +707,7 @@ function cardHTML(l) {
   const prefEN = prefToEN(l.prefecture);
 
   return `
-  <a class="lcard ${selectedId===l.id?'selected':''}" href="listing.html?id=${encodeURIComponent(l.id)}" onclick="return cardClick(event,'${l.id}')">
+  <a class="lcard" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank">
     <div class="lcard-img-wrap">
       ${img}${placeholder}
       <div class="lcard-badges">${badgeFree}${badgeCheap}${badgeAB}</div>
@@ -715,10 +715,11 @@ function cardHTML(l) {
     </div>
     <div class="lcard-body">
       <div class="lcard-location">${prefEN}${l.city ? ' · '+l.city : ''}</div>
-      <div class="lcard-title">${l.title_en || l.title}</div>
+      <div class="lcard-title" onclick="event.stopPropagation();event.preventDefault();this.classList.toggle('expanded')">${l.title_en || l.title}</div>
       ${l.title_en ? `<div style="font-size:10px;color:var(--text3);font-family:var(--jp);margin-bottom:4px">${l.title}</div>` : ''}
       <div class="lcard-price-row">${fmtJPY(l.price_jpy)}</div>
       <div class="lcard-specs">${specs}</div>
+      ${l.traffic ? `<div class="lcard-traffic">🚉 ${l.traffic.split('\n')[0].slice(0, 80)}</div>` : ''}
       <div class="airbnb-bar">
         <span class="airbnb-label">AIRBNB</span>
         <div class="airbnb-track"><div class="airbnb-fill" style="width:${ab}%;background:${abColor}"></div></div>

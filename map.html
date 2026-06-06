@@ -79,7 +79,9 @@ select:focus { border-color: var(--accent); }
 .badge-source { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,.7); color: var(--text2); padding: 2px 6px; border-radius: 3px; font-size: 9px; font-family: var(--mono); }
 .lcard-body { padding: 10px 12px 8px; }
 .lcard-location { font-family: var(--mono); font-size: 10px; color: var(--accent); letter-spacing: .08em; margin-bottom: 3px; text-transform: uppercase; }
-.lcard-title { font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 6px; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lcard-title { font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 6px; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: text; }
+.lcard-title.expanded { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.lcard-traffic { font-family: var(--mono); font-size: 10px; color: var(--text3); margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lcard-price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
 .lcard-price-jpy { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--accent2); }
 .lcard-price-eur { font-family: var(--mono); font-size: 11px; color: var(--text3); }
