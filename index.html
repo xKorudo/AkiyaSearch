@@ -213,6 +213,16 @@ h1 em {
 .feature-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
 .feature-card p { font-size: 12px; color: var(--text2); line-height: 1.65; }
 
+/* Top prefectures by akiya count */
+.topref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.topref-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; text-decoration: none; color: var(--text); transition: border-color .15s, transform .15s; }
+.topref-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.topref-icon { flex-shrink: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
+.topref-icon svg { width: 44px; height: 44px; display: block; }
+.topref-name { font-size: 14px; font-weight: 700; line-height: 1.2; }
+.topref-count { font-family: var(--mono); font-size: 11px; color: var(--accent2); margin-top: 2px; }
+@media (max-width: 860px) { .topref-grid { grid-template-columns: repeat(2, 1fr); } }
+
 /* ── RECENT LISTINGS ─────────────────────────────────── */
 .recent {
   max-width: 1320px; margin: 0 auto; padding: 0 40px 80px;
@@ -397,6 +407,18 @@ footer {
   </div>
 </section>
 
+<!-- ── TOP PREFECTURES ────────────────────────────────────────────────────────── -->
+<section class="recent" style="padding-bottom:40px">
+  <div class="recent-label">Where the akiya are</div>
+  <div class="recent-head">
+    <h2>Most listings by prefecture</h2>
+    <a class="hbtn" href="./map.html">Open map →</a>
+  </div>
+  <div class="topref-grid" id="topref-grid">
+    <div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--text3);font-family:var(--mono);font-size:12px">Loading…</div>
+  </div>
+</section>
+
 <!-- ── RECENT LISTINGS ────────────────────────────────────────────────────────── -->
 <section class="recent">
   <div class="recent-label" id="recent-eyebrow">A random glimpse</div>
@@ -483,6 +505,8 @@ async function loadLanding() {
     const listings = (d.listings || []).filter(l => l.source !== 'AKIYA BANK');
     document.getElementById('stat-count').textContent = listings.length.toLocaleString();
 
+    renderTopPrefectures(listings);   // top prefectures by akiya count (with outline icons)
+
     const withImg = listings.filter(l => l.image_url);
 
     // Prefer "current hot picks" (most-viewed). Fall back to a random sample
@@ -527,19 +551,63 @@ async function loadLanding() {
 
 loadLanding();
 
+// ── Shared prefecture geometry (cached) ───────────────────────────────────────
+let _fcCache = null, _byKanji = null;
+async function getPrefGeo() {
+  if (_fcCache) return { fc: _fcCache, byKanji: _byKanji };
+  if (typeof d3 === 'undefined' || typeof topojson === 'undefined') return null;
+  try {
+    const r = await fetch('./data/japan.topojson');
+    if (!r.ok) return null;
+    const topo = await r.json();
+    const obj = topo.objects.japan || topo.objects[Object.keys(topo.objects)[0]];
+    _fcCache = topojson.feature(topo, obj);
+    _byKanji = {};
+    _fcCache.features.forEach(f => {
+      const k = (f.properties.nam_ja || '').trim().replace(/[県府都]$/, '');
+      _byKanji[k] = f;
+    });
+    return { fc: _fcCache, byKanji: _byKanji };
+  } catch { return null; }
+}
+
+// Small SVG outline of one prefecture.
+function prefOutlineSVG(feature, size = 44) {
+  const proj = d3.geoMercator().fitExtent([[4, 4], [size - 4, size - 4]], feature);
+  const path = d3.geoPath(proj);
+  return `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg"><path d="${path(feature)}" fill="var(--accent)" fill-opacity="0.20" stroke="var(--accent)" stroke-width="1" stroke-linejoin="round"/></svg>`;
+}
+
+// ── Top prefectures by akiya count ────────────────────────────────────────────
+async function renderTopPrefectures(listings) {
+  const grid = document.getElementById('topref-grid');
+  if (!grid) return;
+  const counts = {};
+  listings.forEach(l => { if (l.prefecture) counts[l.prefecture] = (counts[l.prefecture] || 0) + 1; });
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  if (!top.length) { grid.innerHTML = ''; return; }
+  const geo = await getPrefGeo();
+  grid.innerHTML = top.map(([kanji, n]) => {
+    const f = geo && geo.byKanji[kanji];
+    const icon = f ? prefOutlineSVG(f) : '<div style="font-family:var(--jp);font-size:22px;color:var(--accent)">家</div>';
+    const en = PREF_EN[kanji] || kanji;
+    return `<a class="topref-card" href="./search.html?pref=${encodeURIComponent(kanji)}">
+      <div class="topref-icon">${icon}</div>
+      <div>
+        <div class="topref-name">${en}</div>
+        <div class="topref-count">${n.toLocaleString()} akiya</div>
+      </div>
+    </a>`;
+  }).join('');
+}
+
 // ── Interactive Japan prefecture map ──────────────────────────────────────────
 async function renderJapanMap() {
   const svg = document.getElementById('jp-map');
-  if (!svg || typeof d3 === 'undefined' || typeof topojson === 'undefined') return;
-  let topo;
-  try {
-    const r = await fetch('./data/japan.topojson');
-    if (!r.ok) return;
-    topo = await r.json();
-  } catch { return; }
-
-  const obj = topo.objects.japan || topo.objects[Object.keys(topo.objects)[0]];
-  const fc = topojson.feature(topo, obj);
+  if (!svg) return;
+  const geo = await getPrefGeo();
+  if (!geo) return;
+  const fc = geo.fc;
   const W = 360, H = 460;
   const projection = d3.geoMercator().fitExtent([[10, 10], [W - 10, H - 10]], fc);
   const path = d3.geoPath(projection);
