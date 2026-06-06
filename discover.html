@@ -258,9 +258,9 @@ header { height: 52px; background: var(--surface); border-bottom: 1px solid var(
   .disco-desc { display: none; }
   .disco-why { display: none; }
   .disco-open { padding: 5px 10px; font-size: 11px; margin-top: 4px; }
-  .disco-actions { margin: 10px 0 4px; gap: 24px; }
-  .disco-btn { width: 54px; height: 54px; font-size: 22px; }
-  .disco-hint { display: none; }
+  /* On phones, swiping replaces the buttons — saves room so all info fits */
+  .disco-actions { display: none; }
+  .disco-hint { display: block; font-size: 11px; margin-top: 8px; text-align: center; }
 }
 </style>
 </head>
@@ -531,7 +531,7 @@ function renderDiscover(keepCurrent) {
       <button class="disco-btn dislike" onclick="swipe(false)" title="Not for me (←)">👎</button>
       <button class="disco-btn like" onclick="swipe(true)" title="Like it (→)">👍</button>
     </div>
-    <div class="disco-hint">swipe the card · or ← dislike / → like · tap photos to zoom</div>`;
+    <div class="disco-hint">👈 swipe left to pass · swipe right to like 👉</div>`;
   attachDiscoSwipe();
 }
 
