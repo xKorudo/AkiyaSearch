@@ -312,9 +312,15 @@ function renderHazards(l){
     </div>
 
     <div class="hz-item">
-      <div class="hz-h">🌊 Tsunami & 🏔 Landslide</div>
-      <div class="hz-muted">Official Japanese hazard maps for this location (toggle the 津波 / 土砂災害 layers):</div>
-      <a class="hz-link" href="${disaster}" target="_blank" rel="noopener">🗺 MLIT/GSI Hazard Map Portal ↗</a>
+      <div class="hz-h">🌊 Tsunami history</div>
+      <div id="hz-tsunami"><span class="hz-muted">Loading NOAA data…</span></div>
+      <a class="hz-link" href="${disaster}" target="_blank" rel="noopener">🗺 Inundation map (MLIT/GSI, 津波 layer) ↗</a>
+    </div>
+
+    <div class="hz-item">
+      <div class="hz-h">🏔 Landslide</div>
+      <div class="hz-muted">No reliable point-level event feed exists for landslides — check the official hazard zones (土砂災害警戒区域):</div>
+      <a class="hz-link" href="${disaster}" target="_blank" rel="noopener">🗺 Landslide hazard map (MLIT/GSI) ↗</a>
     </div>
 
     <div class="hz-item">
@@ -323,9 +329,44 @@ function renderHazards(l){
       <a class="hz-link" href="${jshis}" target="_blank" rel="noopener">📊 J-SHIS seismic hazard map ↗</a>
     </div>
 
-    <div class="hz-note">Earthquake events: U.S. Geological Survey (USGS). Tsunami, landslide & seismic-probability maps: Japan's MLIT/GSI and NIED J-SHIS. Figures may be incomplete or outdated — always verify with these official sources.</div>
+    <div class="hz-note">Earthquake events: U.S. Geological Survey (USGS). Tsunami events: NOAA NCEI Global Historical Tsunami Database. Hazard & seismic-probability maps: Japan's MLIT/GSI and NIED J-SHIS. Figures may be incomplete or outdated — always verify with these official sources.</div>
   </div>`;
   loadQuakes(l);
+  loadTsunami(l);
+}
+
+function _haversineKm(lat1,lng1,lat2,lng2){
+  const R=6371,toR=d=>d*Math.PI/180;
+  const dLat=toR(lat2-lat1),dLng=toR(lng2-lng1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toR(lat1))*Math.cos(toR(lat2))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+
+async function loadTsunami(l){
+  const el=document.getElementById('hz-tsunami');
+  if(!el) return;
+  if(!(l.lat&&l.lng)){ el.innerHTML='<span class="hz-muted">No coordinates — use the inundation map below.</span>'; return; }
+  try{
+    const r=await fetch('https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/tsunamis/events?country=JAPAN&minYear=1900');
+    if(!r.ok) throw new Error('noaa');
+    const d=await r.json();
+    const RADIUS=200;
+    const near=(d.items||[])
+      .filter(e=>typeof e.latitude==='number'&&typeof e.longitude==='number')
+      .map(e=>({...e,dist:_haversineKm(l.lat,l.lng,e.latitude,e.longitude)}))
+      .filter(e=>e.dist<=RADIUS)
+      .sort((a,b)=>(b.year-a.year)||((b.month||0)-(a.month||0))||((b.day||0)-(a.day||0)));
+    if(!near.length){ el.innerHTML=`<span class="hz-muted">No recorded tsunami source within ${RADIUS}&nbsp;km since 1900 (NOAA).</span>`; return; }
+    const last=near[0];
+    const date=`${last.year}${last.month?'-'+String(last.month).padStart(2,'0'):''}${last.day?'-'+String(last.day).padStart(2,'0'):''}`;
+    const heights=near.map(e=>e.maxWaterHeight).filter(h=>typeof h==='number');
+    const maxH=heights.length?Math.max(...heights):null;
+    el.innerHTML=`<div class="hz-stat"><b>${near.length}</b> tsunami source${near.length>1?'s':''} within ${RADIUS}&nbsp;km (since 1900)</div>
+      <div class="hz-stat">Most recent: <b>${date}</b>${last.locationName?' · '+last.locationName.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase()):''}</div>
+      ${maxH!=null?`<div class="hz-stat">Max recorded wave: <b>${maxH} m</b></div>`:''}`;
+  }catch{
+    el.innerHTML='<span class="hz-muted">Couldn\'t load NOAA tsunami data — use the inundation map below.</span>';
+  }
 }
 
 async function loadQuakes(l){
