@@ -357,6 +357,20 @@ function render(l){
   }
   renderActions(l);
   renderHazards(l);
+  const aside=document.getElementById('hazard-aside');
+  if(aside) aside.insertAdjacentHTML('beforeend', prefBoxHTML(l));
+}
+
+// Small container linking to the prefecture guide
+function prefBoxHTML(l){
+  const en = prefToEN(l.prefecture) || l.prefecture || 'this prefecture';
+  const s = (prefToEN(l.prefecture) || '').toLowerCase().replace(/ /g,'-');
+  const href = './prefectures.html' + (s ? ('#pref-'+s) : '');
+  return `<div class="hazard-box" style="margin-top:16px">
+    <div class="hz-title">📚 About ${en}</div>
+    <div class="hz-sub">What this region is known for — climate, culture, food, history.</div>
+    <a class="hz-link" href="${href}" target="_blank" rel="noopener" style="font-size:13px">Learn more about ${en} ↗</a>
+  </div>`;
 }
 
 // ── Location natural-hazard panel (separate from building seismic standard) ──
