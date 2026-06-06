@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stats — Akiya Search</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://wmevbetyxqhtprdahxqh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtZXZiZXR5eHFodHByZGFoeHFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzAyOTcsImV4cCI6MjA5NjE0NjI5N30.jd5TDcGI0dlSpypjuoPtdOuqhBhkf_ouX5MMg4oSfSI";
+</script>
+<style>
+:root{--bg:#0e0e0e;--surface:#161616;--surface2:#1e1e1e;--surface3:#252525;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.14);--text:#e8e8e4;--text2:#9a9a90;--text3:#585850;--accent:#e8a020;--accent2:#f0c060;--green:#3ecf8e;--red:#f05050;--blue:#5090f0;--mono:'IBM Plex Mono',monospace;--sans:'Syne',sans-serif;--r:8px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;}
+header{height:52px;background:var(--surface);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 20px;gap:14px;position:sticky;top:0;z-index:50;}
+.logo{font-size:15px;font-weight:700;color:var(--text);text-decoration:none;}
+.logo span{color:var(--accent);}
+.badge-admin{font-family:var(--mono);font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:2px 6px;}
+.back{margin-left:auto;font-size:13px;color:var(--text2);text-decoration:none;}
+.wrap{max-width:1000px;margin:24px auto 80px;padding:0 18px;}
+.gate{max-width:420px;margin:80px auto;text-align:center;color:var(--text2);}
+h2{font-size:16px;font-weight:700;margin:28px 0 12px;}
+.range{display:flex;gap:8px;margin-bottom:8px;}
+.range button{padding:7px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
+.range button.on{background:var(--accent);border-color:var(--accent);color:#000;}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.kpi{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:16px;}
+.kpi-num{font-family:var(--mono);font-size:26px;color:var(--accent2);}
+.kpi-label{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:4px;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:13px;}
+.bar-row .lbl{width:120px;color:var(--text2);}
+.bar-track{flex:1;height:18px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;background:var(--accent);}
+.bar-row .val{width:90px;text-align:right;font-family:var(--mono);font-size:12px;color:var(--text2);}
+.funnel-step{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+.funnel-step .lbl{width:160px;font-size:13px;}
+.funnel-bar{flex:1;height:26px;background:var(--surface2);border-radius:5px;overflow:hidden;}
+.funnel-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));display:flex;align-items:center;padding-left:8px;font-family:var(--mono);font-size:11px;color:#000;font-weight:700;}
+.drop{font-size:11px;color:var(--red);font-family:var(--mono);margin:0 0 8px 172px;}
+.muted{color:var(--text3);font-size:12px;}
+@media(max-width:680px){.cards{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="./">🏚 <span>Akiya</span> Search</a>
+  <span class="badge-admin">STATS</span>
+  <a class="back" href="./admin.html">Admin →</a>
+</header>
+
+<div id="gate" class="gate">Checking access…</div>
+<div id="wrap" class="wrap" style="display:none">
+  <div class="range">
+    <button data-d="7" onclick="setRange(7,this)" class="on">Last 7 days</button>
+    <button data-d="30" onclick="setRange(30,this)">30 days</button>
+    <button data-d="90" onclick="setRange(90,this)">90 days</button>
+  </div>
+  <div id="content"><div class="muted">Loading…</div></div>
+</div>
+
+<script src="js/shared.js"></script>
+<script>
+let RANGE = 7, EVENTS = [];
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await initAuth(); await checkAdmin();
+  if (!isAdminUser) {
+    document.getElementById('gate').innerHTML = currentUser
+      ? 'Signed in but not an admin.'
+      : 'Please <a class="lnk" style="color:var(--accent)" href="./search.html">sign in</a> with an admin account.';
+    return;
+  }
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('wrap').style.display = '';
+  loadStats();
+});
+
+function setRange(d, btn){ RANGE=d; document.querySelectorAll('.range button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); loadStats(); }
+
+async function loadStats(){
+  const box = document.getElementById('content');
+  box.innerHTML = '<div class="muted">Loading…</div>';
+  const since = new Date(Date.now()-RANGE*864e5).toISOString();
+  const { data, error } = await supa.from('events').select('session_id,name,page,ref,created_at')
+    .gte('created_at', since).order('created_at',{ascending:true}).limit(50000);
+  if (error){ box.innerHTML = `<div class="muted">Could not load events: ${error.message}<br>(Did you run sql/events.sql?)</div>`; return; }
+  EVENTS = data || [];
+  render();
+}
+
+function render(){
+  const box = document.getElementById('content');
+  if (!EVENTS.length){ box.innerHTML = '<div class="muted">No events yet in this range.</div>'; return; }
+  const sessions = {};
+  EVENTS.forEach(e => { (sessions[e.session_id] ||= []).push(e); });
+  const sessIds = Object.keys(sessions);
+
+  const pv = EVENTS.filter(e=>e.name==='page_view');
+  const opens = EVENTS.filter(e=>e.name==='listing_open').length;
+  const clicks = EVENTS.filter(e=>e.name==='source_click').length;
+
+  // page views by page
+  const byPage = {}; pv.forEach(e=>{ byPage[e.page]=(byPage[e.page]||0)+1; });
+  // referrers
+  const byRef = {}; pv.forEach(e=>{ const r=e.ref||'direct'; byRef[r]=(byRef[r]||0)+1; });
+  // exit pages: last event page per session
+  const exits = {}; sessIds.forEach(s=>{ const ev=sessions[s]; const last=ev[ev.length-1]; exits[last.page]=(exits[last.page]||0)+1; });
+
+  // funnel by session
+  const reached = { visit:0, search:0, listing:0, source:0 };
+  sessIds.forEach(s=>{
+    const ev=sessions[s];
+    reached.visit++;
+    if (ev.some(e=>e.page==='search'||e.name==='search')) reached.search++;
+    if (ev.some(e=>e.name==='listing_open'||e.page==='listing')) reached.listing++;
+    if (ev.some(e=>e.name==='source_click')) reached.source++;
+  });
+
+  const bar = (obj) => { const max=Math.max(1,...Object.values(obj)); return Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="bar-row"><span class="lbl">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/max*100)}%"></div></div><span class="val">${v.toLocaleString()}</span></div>`).join(''); };
+
+  const funnelSteps = [['Visited',reached.visit],['Opened Search',reached.search],['Opened a listing',reached.listing],['Clicked Source',reached.source]];
+  let funnelHTML=''; const top=reached.visit||1;
+  funnelSteps.forEach((s,i)=>{
+    const pct=Math.round(s[1]/top*100);
+    funnelHTML+=`<div class="funnel-step"><span class="lbl">${s[0]}</span><div class="funnel-bar"><div class="funnel-fill" style="width:${Math.max(pct,6)}%">${s[1].toLocaleString()} · ${pct}%</div></div></div>`;
+    if(i<funnelSteps.length-1){ const drop=s[1]?Math.round((1-funnelSteps[i+1][1]/s[1])*100):0; funnelHTML+=`<div class="drop">↓ ${drop}% drop-off</div>`; }
+  });
+
+  box.innerHTML = `
+    <div class="cards">
+      <div class="kpi"><div class="kpi-num">${pv.length.toLocaleString()}</div><div class="kpi-label">Page views</div></div>
+      <div class="kpi"><div class="kpi-num">${sessIds.length.toLocaleString()}</div><div class="kpi-label">Sessions</div></div>
+      <div class="kpi"><div class="kpi-num">${opens.toLocaleString()}</div><div class="kpi-label">Listing opens</div></div>
+      <div class="kpi"><div class="kpi-num">${clicks.toLocaleString()}</div><div class="kpi-label">Source clicks</div></div>
+    </div>
+
+    <h2>🪜 Funnel (by session)</h2>
+    ${funnelHTML}
+
+    <h2>🚪 Where sessions ended (exit page)</h2>
+    ${bar(exits)}
+
+    <h2>📄 Page views by page</h2>
+    ${bar(byPage)}
+
+    <h2>🔗 Top referrers</h2>
+    ${bar(byRef)}
+  `;
+}
+</script>
+</body>
+</html>

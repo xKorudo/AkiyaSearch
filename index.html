@@ -489,6 +489,11 @@ function fmtPrice(jpy) {
 const SB_URL = "https://wmevbetyxqhtprdahxqh.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtZXZiZXR5eHFodHByZGFoeHFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzAyOTcsImV4cCI6MjA5NjE0NjI5N30.jd5TDcGI0dlSpypjuoPtdOuqhBhkf_ouX5MMg4oSfSI";
 
+// Anonymous, cookieless analytics (mirrors shared.js track on this standalone page)
+function _sid(){ try{ let s=sessionStorage.getItem('akiya_sid'); if(!s){s=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('akiya_sid',s);} return s; }catch{ return 'anon'; } }
+function track(name, meta){ try{ const row={session_id:_sid(),name,page:'landing',meta:meta||null}; if(name==='page_view'){try{row.ref=document.referrer?new URL(document.referrer).hostname:null;}catch{}} fetch(`${SB_URL}/rest/v1/events`,{method:'POST',keepalive:true,headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(row)}); }catch{} }
+track('page_view');
+
 // Fetch the most-viewed listing ids (returns [] if the table isn't set up yet).
 async function fetchTopViews() {
   try {
@@ -537,7 +542,7 @@ async function loadLanding() {
         ? `<img class="recent-img" src="${l.image_url}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" alt="">`
         : '';
       const ph = `<div class="recent-img-ph" ${l.image_url?'style="display:none"':''}>家</div>`;
-      return `<a class="recent-card" href="./search.html?l=${encodeURIComponent(l.id)}">
+      return `<a class="recent-card" href="./search.html?l=${encodeURIComponent(l.id)}" onclick="track('recent_click',{id:'${l.id}'})">
         ${img}${ph}
         <div class="recent-body">
           <div class="recent-loc">${loc}</div>
@@ -593,7 +598,7 @@ async function renderTopPrefectures(listings) {
     const f = geo && geo.byKanji[kanji];
     const icon = f ? prefOutlineSVG(f, 72) : '<div style="font-family:var(--jp);font-size:34px;color:var(--accent)">家</div>';
     const en = PREF_EN[kanji] || kanji;
-    return `<a class="topref-card" href="./search.html?pref=${encodeURIComponent(kanji)}">
+    return `<a class="topref-card" href="./search.html?pref=${encodeURIComponent(kanji)}" onclick="track('pref_click',{pref:'${kanji}'})">
       <div class="topref-icon">${icon}</div>
       <div>
         <div class="topref-name">${en}</div>

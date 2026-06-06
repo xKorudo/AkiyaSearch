@@ -153,6 +153,11 @@ function seismicInfo(y){if(!y)return{era:'Unknown',label:'Build year unknown',co
 function riskLevel(l){const s=seismicInfo(l.built_year);let sc={'Low':1,'Moderate':2,'High':3,'Unknown':2}[s.risk];const c=(l.condition||'')+(l.description||'');if(/大規模修繕|要大規模/.test(c))sc+=1;if(l.built_year&&(new Date().getFullYear()-l.built_year)>50)sc+=1;if(sc>=4)return{label:'High Risk',color:'var(--red)'};if(sc>=3)return{label:'Elevated',color:'var(--accent)'};if(sc===2)return{label:'Moderate',color:'var(--blue)'};return{label:'Low Risk',color:'var(--green)'};}
 function airbnbVerdict(l){const t=((l.title||'')+(l.description||'')).toLowerCase();const to=AIRBNB_TOURISM[l.prefecture]||45;let pros=[],cons=[];if(to>=75)pros.push('High tourist demand in this region');else if(to>=55)pros.push('Moderate tourist traffic');else cons.push('Lower tourist volume in this area');if(/海|ocean|beach|sea/.test(t))pros.push('Coastal/ocean proximity');if(/温泉|onsen/.test(t))pros.push('Hot spring access nearby');if(/古民家|kominka/.test(t))pros.push('Traditional architecture — unique stay');if(/リノベ|renovated/.test(t))pros.push('Already renovated — lower setup cost');if(l.size_m2>=100)pros.push('Large floor area ('+l.size_m2+'m²) fits groups');if(/大規模修繕/.test(t))cons.push('Major renovation needed before listing');if(l.built_year&&l.built_year<1960)cons.push('Very old structure ('+l.built_year+') — compliance risk');if(!l.size_m2||l.size_m2<60)cons.push('Small floor area limits group bookings');const nightly=Math.round(45*(to/60)*(l.size_m2?Math.min(2,l.size_m2/80):1));const SPECIAL=['大阪','東京','新潟','千葉','福岡'];const special=SPECIAL.includes(l.prefecture);const annualNights=Math.min(180,Math.round(120*(to/60)));const monthly=Math.round(nightly*annualNights/12);const annualEUR=nightly*annualNights;const priceEUR=l.price_jpy?Math.round(l.price_jpy*FX.EUR):null;const roi=priceEUR&&annualEUR?Math.round(priceEUR/annualEUR):null;if(annualNights>=180)cons.push('Income limited by the 180-night/yr minpaku cap');const minpaku=special?'In a special minpaku zone (特区民泊): with a licence you can operate beyond the 180-night/yr cap.':'Standard minpaku is capped at 180 nights/yr — exceeding it needs a hotel/ryokan licence (旅館業法). Always verify the local ordinance & register (届出).';return{pros:pros.slice(0,4),cons:cons.slice(0,4),nightly,monthly,annualNights,special,minpaku,roi};}
 
+// Anonymous, cookieless analytics
+function _sid(){ try{ let s=sessionStorage.getItem('akiya_sid'); if(!s){s=Math.random().toString(36).slice(2)+Date.now().toString(36);sessionStorage.setItem('akiya_sid',s);} return s; }catch{ return 'anon'; } }
+function track(name, meta){ try{ const row={session_id:_sid(),name,page:'listing',meta:meta||null}; if(name==='page_view'){try{row.ref=document.referrer?new URL(document.referrer).hostname:null;}catch{}} fetch(`${SUPABASE_URL}/rest/v1/events`,{method:'POST',keepalive:true,headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify(row)}); }catch{} }
+track('page_view');
+
 let _imgs=[],_idx=0;
 function lbOpen(i){_idx=i;document.getElementById('lb-img').src=bigImg(_imgs[_idx]);document.getElementById('lb').classList.add('open');}
 function lbClose(){document.getElementById('lb').classList.remove('open');}
@@ -340,7 +345,7 @@ function render(l){
     ${(l.lat&&l.lng)?`<div class="sec-title">Approximate location</div><div id="map"></div><div style="font-size:11px;color:var(--text3);margin-bottom:8px">📍 Town-level only — use the Google Maps link above for the exact address.</div>`:''}
 
     <div class="btns">
-      <a class="btn btn-p" href="${l.source_url}" target="_blank">→ View original listing</a>
+      <a class="btn btn-p" href="${l.source_url}" target="_blank" onclick="track('source_click',{id:'${l.id}'})">→ View original listing</a>
       <a class="btn btn-s" href="./?l=${encodeURIComponent(l.id)}">See on map / app</a>
     </div>
     ${typeof disclaimerHTML==='function'?disclaimerHTML():''}`;

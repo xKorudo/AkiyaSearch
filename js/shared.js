@@ -16,6 +16,34 @@ let isAdminUser = false;  // set true after is_admin() check
 let HIDDEN = new Set(), OVERRIDES = {};   // moderation: hidden ids + per-listing field patches
 let WATCHLISTS = [], NOTIFS = [], notifSeenAt = null;
 
+// ── ANALYTICS (anonymous, cookieless) ─────────────────────────────────────────
+// A random per-tab id in sessionStorage (not a cookie, no PII, no cross-site).
+let _sid = null;
+function sessionId() {
+  if (_sid) return _sid;
+  try { _sid = sessionStorage.getItem('akiya_sid');
+    if (!_sid) { _sid = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem('akiya_sid', _sid); }
+  } catch { _sid = 'anon'; }
+  return _sid;
+}
+function currentPageName() {
+  const p = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  return ({ '': 'landing', 'index.html': 'landing', 'search.html': 'search', 'map.html': 'map',
+            'discover.html': 'discover', 'listing.html': 'listing', 'stats.html': 'stats',
+            'admin.html': 'admin' })[p] || p;
+}
+function track(name, meta) {
+  if (typeof SUPABASE_URL === 'undefined' || !SUPABASE_URL) return;
+  try {
+    const row = { session_id: sessionId(), name, page: currentPageName(), meta: meta || null };
+    if (name === 'page_view') { try { row.ref = document.referrer ? new URL(document.referrer).hostname : null; } catch { row.ref = null; } }
+    fetch(`${SUPABASE_URL}/rest/v1/events`, { method: 'POST', keepalive: true,
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(row) });
+  } catch {}
+}
+window.addEventListener('DOMContentLoaded', () => { const p = currentPageName(); if (p !== 'admin' && p !== 'stats') track('page_view'); });
+
 // ── VIEW COUNTS / "HOT" ───────────────────────────────────────────────────────
 let VIEWS = {};            // listing_id -> view count (from Supabase)
 let HOT_THRESHOLD = Infinity;
@@ -914,7 +942,7 @@ function cardHTML(l) {
     </div>
     <div class="lcard-footer">
       <div class="lcard-tags">${viewCount(l.id) ? `<span class="ltag" title="Times viewed">👁 ${viewCount(l.id)}</span>` : ''}${tags}</div>
-      <span class="lcard-link" onclick="event.stopPropagation();event.preventDefault();window.open('${l.source_url}','_blank')">Source →</span>
+      <span class="lcard-link" onclick="event.stopPropagation();event.preventDefault();track('source_click',{id:'${l.id}'});window.open('${l.source_url}','_blank')">Source →</span>
     </div>
   </a>`;
 }
@@ -969,6 +997,7 @@ function openDetail(id) {
   if (!l) return;
   selectedId = id;
   bumpView(id);   // count this view toward the 🔥 HOT ranking
+  track('listing_open', { id });
   document.querySelectorAll('.lcard').forEach(c => c.classList.toggle('selected', c.onclick?.toString().includes(`'${id}'`)));
 
   const ab = calcAirbnb(l);
