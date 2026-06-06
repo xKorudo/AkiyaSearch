@@ -1,0 +1,61 @@
+name: Backfill Details & Deploy
+
+# Dedicated traffic/description backfill. Separate from backfill-images.yml so
+# each gets a fresh IP and full time budget without competing with each other.
+# Offset by 1 hour from the image workflow (*/2 h) so they rarely collide.
+
+on:
+  schedule:
+    - cron: "0 1-23/2 * * *"   # every 2 hours starting at 01:00 — 12 runs/day
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: akiya-pipeline
+  cancel-in-progress: false
+
+jobs:
+  backfill-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      - name: Restore listings DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            akiya_v4.db
+            geocache.json
+          key: akiya-db-${{ github.run_id }}
+          restore-keys: |
+            akiya-db-
+
+      - name: Backfill traffic & description (fresh IP, full budget)
+        run: python enrich_details.py 400
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Build static snapshot
+        run: python export_static.py
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public --project-name=akiya-finder --branch main

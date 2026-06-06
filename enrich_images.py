@@ -93,20 +93,11 @@ def main():
 
     limit = int(sys.argv[1]) if len(sys.argv) > 1 else BATCH
 
-    # Primary queue: listings needing more images
     img_todo = [t for t in listings_needing_images(min_images=5, limit=limit * 2)
                 if "suumo.jp" in (t[1] or "")][:limit]
+    print(f"Listings needing full galleries: {len(img_todo)}", flush=True)
 
-    # Secondary queue: listings with images but missing traffic info
-    # Fill remaining budget after image pass
-    traffic_only_ids = set(lid for lid, _ in listings_needing_traffic(limit=limit))
-    img_ids = set(lid for lid, _, _ in img_todo)
-    traffic_todo = [(lid, url) for lid, url in listings_needing_traffic(limit=limit)
-                    if lid not in img_ids and "suumo.jp" in (url or "")]
-
-    print(f"Listings needing galleries: {len(img_todo)}  |  needing traffic only: {len(traffic_todo)}", flush=True)
-
-    img_done = traffic_done = fails = 0
+    done = fails = 0
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         ctx = browser.new_context(
@@ -116,22 +107,21 @@ def main():
         )
         page = ctx.new_page()
 
-        # ── Pass 1: image backfill (also grabs traffic/description while here) ──
         for i, (lid, url, n) in enumerate(img_todo, 1):
             m = re.search(r"nc_(\d+)", url)
             bid = m.group(1) if m else ""
             try:
-                imgs = extract_images(page, url, bid)  # page is already loaded
-                fields = extract_detail_fields(page)
+                imgs = extract_images(page, url, bid)  # page already loaded by extract_images
+                fields = extract_detail_fields(page)   # free — page is already there
             except Exception:
                 imgs = None
                 fields = {}
 
             if not imgs:
                 fails += 1
-                print(f"  [img {i}/{len(img_todo)}] no images (likely blocked): {url[:50]}", flush=True)
+                print(f"  [{i}/{len(img_todo)}] no images (likely blocked): {url[:50]}", flush=True)
                 if fails >= 3:
-                    print("  Repeated blocks — stopping early.", flush=True)
+                    print("  Repeated blocks — stopping early. Re-run later to continue.", flush=True)
                     break
                 time.sleep(random.uniform(15, 25))
                 continue
@@ -140,38 +130,13 @@ def main():
             update_images(lid, json.dumps(imgs), first_image=imgs[0])
             if fields.get("traffic") or fields.get("description"):
                 update_detail_fields(lid, fields.get("traffic"), fields.get("description"))
-            img_done += 1
-            print(f"  [img {i}/{len(img_todo)}] {len(imgs)} photos  traffic={'✓' if fields.get('traffic') else '—'}  <- {url[:50]}", flush=True)
+            done += 1
+            print(f"  [{i}/{len(img_todo)}] {len(imgs)} photos  traffic={'✓' if fields.get('traffic') else '—'}  <- {url[:50]}", flush=True)
             time.sleep(random.uniform(2, 4))
-
-        # ── Pass 2: traffic-only backfill (lightweight — no image extraction) ──
-        if fails < 3:
-            for i, (lid, url) in enumerate(traffic_todo, 1):
-                try:
-                    page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                    page.wait_for_timeout(1500)
-                    fields = extract_detail_fields(page)
-                except Exception:
-                    fields = {}
-
-                if not fields.get("traffic"):
-                    fails += 1
-                    print(f"  [traffic {i}/{len(traffic_todo)}] no data (likely blocked): {url[:50]}", flush=True)
-                    if fails >= 3:
-                        print("  Repeated blocks — stopping.", flush=True)
-                        break
-                    time.sleep(random.uniform(10, 18))
-                    continue
-
-                fails = 0
-                update_detail_fields(lid, fields.get("traffic"), fields.get("description"))
-                traffic_done += 1
-                print(f"  [traffic {i}/{len(traffic_todo)}] ✓  <- {url[:50]}", flush=True)
-                time.sleep(random.uniform(1.5, 3))
 
         browser.close()
 
-    print(f"DONE: {img_done} galleries enriched, {traffic_done} traffic records added, {fails} failures")
+    print(f"DONE: enriched {done}, failures {fails}")
 
 
 if __name__ == "__main__":
