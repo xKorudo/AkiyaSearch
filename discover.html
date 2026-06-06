@@ -520,8 +520,10 @@ function renderDiscover(keepCurrent) {
   const l = discoCurrent;
   pickedAspects = new Set();   // reset per card
   const total = Object.keys(SWIPES).length;
+  const likeCount = Object.keys(SWIPES).filter(k => SWIPES[k]).length;
   el.innerHTML = `<div class="disco-progress" style="margin-bottom:12px">
-      <span>${total ? total + ' rated · 👍 likes are saved to your Favorites' : 'Swipe to teach it your taste · 👍 likes go to your Favorites'}</span>
+      <span>${total ? total + ' rated' : 'Swipe to teach it your taste'} · 👍 likes are saved to your <a href="./search.html#saved" style="color:var(--accent);text-decoration:none">Favorites</a></span>
+      <a class="aspect-toggle" href="./search.html#saved" title="See the houses you liked">♥ My likes${likeCount ? ' · ' + likeCount : ''}</a>
       <button class="aspect-toggle ${aspectMode?'on':''}" onclick="toggleAspectMode()" title="Tick what you like/dislike to train recommendations">🎯 Refine my taste${aspectMode?' · ON':''}</button>
     </div>`
     + discoRichCard(l)
@@ -546,7 +548,11 @@ function swipe(liked) {
   if (liked) {
     (async () => {
       const u = (typeof ensureUser === 'function') ? await ensureUser() : currentUser;
-      if (u && !FAVS.has(id)) {
+      if (!u) {
+        if (typeof showToast === 'function') showToast('Sign in to save your likes to Favorites');
+        return;
+      }
+      if (!FAVS.has(id)) {
         FAVS.add(id); if (typeof updateFavCount === 'function') updateFavCount();
         if (supa) supa.from('favorites').upsert({ user_id: u.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true });
       }
