@@ -260,15 +260,10 @@ select:focus { border-color: var(--accent); }
   #result-count { display: none; }
   .header-right .hbtn:not(#login-btn):not(#profile-btn) { display: none; }
 
-  /* Stacked layout: map on top, listing strip below */
-  .main { flex-direction: column; margin-bottom: 54px; }
-  .sidebar {
-    display: flex !important; width: 100%; height: 38vh;
-    border-right: none; border-top: 1px solid var(--border);
-    order: 2;
-  }
-  .listings-list { height: calc(38vh - 36px); }
-  .map-area { flex: none; height: 44vh; order: 1; }
+  /* Map fills all available space on mobile — no listing strip */
+  .main { margin-bottom: 54px; }
+  .sidebar { display: none !important; }
+  .map-area { height: 100%; }
   #map { height: 100%; }
 
   .notif-panel { width: calc(100% - 24px); left: 12px; }
