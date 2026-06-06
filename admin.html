@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Akiya Search</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://wmevbetyxqhtprdahxqh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtZXZiZXR5eHFodHByZGFoeHFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzAyOTcsImV4cCI6MjA5NjE0NjI5N30.jd5TDcGI0dlSpypjuoPtdOuqhBhkf_ouX5MMg4oSfSI";
+</script>
+<style>
+:root{--bg:#0e0e0e;--surface:#161616;--surface2:#1e1e1e;--surface3:#252525;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.14);--text:#e8e8e4;--text2:#9a9a90;--text3:#585850;--accent:#e8a020;--accent2:#f0c060;--green:#3ecf8e;--red:#f05050;--blue:#5090f0;--mono:'IBM Plex Mono',monospace;--sans:'Syne',sans-serif;--r:8px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;}
+header{height:52px;background:var(--surface);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 20px;gap:14px;position:sticky;top:0;z-index:50;}
+.logo{font-size:15px;font-weight:700;color:var(--text);text-decoration:none;}
+.logo span{color:var(--accent);}
+.badge-admin{font-family:var(--mono);font-size:10px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:2px 6px;}
+.back{margin-left:auto;font-size:13px;color:var(--text2);text-decoration:none;}
+.wrap{max-width:1000px;margin:24px auto 80px;padding:0 18px;}
+h2{font-size:18px;font-weight:700;margin:28px 0 12px;}
+.gate{max-width:420px;margin:80px auto;text-align:center;color:var(--text2);}
+.gate button{margin-top:14px;padding:10px 20px;border:none;border-radius:var(--r);background:var(--accent);color:#000;font-weight:700;cursor:pointer;}
+.card{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:14px 16px;margin-bottom:10px;}
+.rep-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.tag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:4px;background:var(--surface3);color:var(--accent2);text-transform:uppercase;letter-spacing:.05em;}
+.tag.sold{color:#ffce6b;}.tag.duplicate{color:#9fd3ff;}.tag.broken_link{color:#ff9b9b;}.tag.wrong_data{color:#ffb46b;}
+.muted{color:var(--text3);font-size:12px;font-family:var(--mono);}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.btn{padding:7px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;}
+.btn:hover{background:var(--surface3);color:var(--text);}
+.btn.danger{border-color:var(--red);color:var(--red);}
+.btn.ok{border-color:var(--green);color:var(--green);}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#000;}
+input,select{height:34px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:0 10px;font-family:var(--sans);font-size:13px;outline:none;}
+input:focus{border-color:var(--accent);}
+.search-row{display:flex;gap:8px;margin-bottom:12px;}
+.search-row input{flex:1;}
+a.lnk{color:var(--blue);text-decoration:none;font-size:12px;}
+.empty{color:var(--text3);padding:20px 0;font-size:13px;}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
+.edit-grid label{font-size:11px;color:var(--text3);display:block;margin-bottom:3px;}
+.edit-grid input{width:100%;}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="./">🏚 <span>Akiya</span> Search</a>
+  <span class="badge-admin">ADMIN</span>
+  <a class="back" href="./search.html">← Back to app</a>
+</header>
+
+<div id="gate" class="gate">Checking access…</div>
+<div id="wrap" class="wrap" style="display:none">
+  <h2>⚐ Open reports</h2>
+  <div id="reports"><div class="empty">Loading…</div></div>
+
+  <h2>🛠 Moderate a listing</h2>
+  <div class="search-row">
+    <input id="msearch" placeholder="Search by title, city or id…" oninput="renderSearch()">
+  </div>
+  <div id="search-results"></div>
+</div>
+
+<script src="js/shared.js"></script>
+<script>
+let RAW = [];   // all listings incl. hidden, for admin lookups
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await initAuth();
+  await checkAdmin();
+  // load a raw copy of listings (without the hide filter) for lookups
+  for (const src of ['/api/listings', './listings.json']) {
+    try { const r = await fetch(src); if (!r.ok) continue; const d = await r.json();
+      RAW = (d.listings || []).filter(l => l.source !== 'AKIYA BANK'); if (RAW.length) break; } catch {}
+  }
+  // also load overrides map (so we know what's hidden/patched)
+  try { const r = await fetch(`${SUPABASE_URL}/rest/v1/listing_overrides?select=listing_id,hidden,patch`,
+    { headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY} });
+    if (r.ok) (await r.json()).forEach(o => OVERRIDES[o.listing_id]=o); } catch {}
+
+  if (!isAdminUser) {
+    document.getElementById('gate').innerHTML = currentUser
+      ? 'You are signed in but not an admin.<br><span class="muted">Ask an existing admin to add your user id to the <code>admins</code> table.</span>'
+      : 'Admin area — please <a class="lnk" href="./search.html">sign in</a> with an admin account, then return here.';
+    return;
+  }
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('wrap').style.display = '';
+  loadReports();
+});
+
+function listingById2(id){ return RAW.find(l => l.id === id); }
+function ov(id){ return OVERRIDES[id] || {}; }
+
+async function loadReports() {
+  const box = document.getElementById('reports');
+  const { data, error } = await supa.from('reports').select('*').eq('status','open').order('created_at',{ascending:false});
+  if (error) { box.innerHTML = `<div class="empty">Could not load reports: ${error.message}</div>`; return; }
+  if (!data.length) { box.innerHTML = '<div class="empty">No open reports 🎉</div>'; return; }
+  box.innerHTML = data.map(r => {
+    const l = listingById2(r.listing_id);
+    const title = l ? (l.title_en || l.title || r.listing_id) : r.listing_id;
+    const loc = l ? `${l.prefecture||''} ${l.city||''}` : '';
+    const hidden = ov(r.listing_id).hidden;
+    return `<div class="card">
+      <div class="rep-head">
+        <span class="tag ${r.category}">${r.category.replace('_',' ')}</span>
+        <strong>${title}</strong> <span class="muted">${loc}</span>
+      </div>
+      ${r.note ? `<div style="font-size:13px;color:var(--text2);margin-bottom:4px">“${r.note}”</div>` : ''}
+      <div class="muted">${new Date(r.created_at).toLocaleString()} · id ${r.listing_id}</div>
+      <div class="row">
+        ${l ? `<a class="lnk" href="listing.html?id=${encodeURIComponent(r.listing_id)}" target="_blank">Open listing ↗</a>` : ''}
+        <button class="btn danger" onclick="hideListing('${r.listing_id}',${r.id})">${hidden?'Re-hide':'Hide / remove'}</button>
+        ${hidden?`<button class="btn" onclick="unhideListing('${r.listing_id}')">Unhide</button>`:''}
+        <button class="btn ok" onclick="resolveReport(${r.id})">Mark resolved</button>
+        <button class="btn" onclick="dismissReport(${r.id})">Dismiss</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function hideListing(id, reportId){ await adminSetHidden(id, true); OVERRIDES[id]={...ov(id),hidden:true}; if(reportId) await setReportStatus(reportId,'resolved'); showToast('Listing hidden'); loadReports(); renderSearch(); }
+async function unhideListing(id){ await adminSetHidden(id, false); OVERRIDES[id]={...ov(id),hidden:false}; showToast('Listing visible again'); loadReports(); renderSearch(); }
+async function resolveReport(id){ await setReportStatus(id,'resolved'); showToast('Resolved'); loadReports(); }
+async function dismissReport(id){ await setReportStatus(id,'dismissed'); showToast('Dismissed'); loadReports(); }
+async function setReportStatus(id,status){ const {error}=await supa.from('reports').update({status}).eq('id',id); if(error) showToast('⚠ '+error.message); }
+
+function renderSearch() {
+  const q = (document.getElementById('msearch').value||'').toLowerCase().trim();
+  const box = document.getElementById('search-results');
+  if (!q) { box.innerHTML = '<div class="empty">Type to find a listing to hide or edit.</div>'; return; }
+  const hits = RAW.filter(l => ((l.title_en||'')+(l.title||'')+(l.city||'')+(l.prefecture||'')+l.id).toLowerCase().includes(q)).slice(0,20);
+  if (!hits.length) { box.innerHTML = '<div class="empty">No matches.</div>'; return; }
+  box.innerHTML = hits.map(l => {
+    const o = ov(l.id);
+    const patched = o.patch || {};
+    return `<div class="card">
+      <div class="rep-head"><strong>${patched.title_en||l.title_en||l.title||l.id}</strong>
+        <span class="muted">${l.prefecture||''} ${l.city||''}</span>
+        ${o.hidden?'<span class="tag broken_link">hidden</span>':''}</div>
+      <div class="muted">id ${l.id} · price ${ (patched.price_jpy ?? l.price_jpy) ?? '—' }</div>
+      <div class="edit-grid">
+        <div><label>Title (EN)</label><input id="t-${l.id}" value="${(patched.title_en||l.title_en||'').replace(/"/g,'&quot;')}"></div>
+        <div><label>Price (¥, blank = on request)</label><input id="p-${l.id}" type="number" value="${patched.price_jpy ?? l.price_jpy ?? ''}"></div>
+      </div>
+      <div class="row">
+        <button class="btn pri" onclick="saveEdit('${l.id}')">Save edits</button>
+        ${o.hidden?`<button class="btn" onclick="unhideListing('${l.id}')">Unhide</button>`:`<button class="btn danger" onclick="hideListing('${l.id}')">Hide / remove</button>`}
+        <a class="lnk" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank">Open ↗</a>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function saveEdit(id){
+  const t=document.getElementById('t-'+id).value.trim();
+  const pRaw=document.getElementById('p-'+id).value.trim();
+  const patch={};
+  if(t) patch.title_en=t;
+  patch.price_jpy = pRaw==='' ? null : Number(pRaw);
+  const {error}=await adminPatch(id,patch);
+  if(error){showToast('⚠ '+(error.message||'save failed'));return;}
+  OVERRIDES[id]={...ov(id),patch:{...(ov(id).patch||{}),...patch}};
+  showToast('Saved'); renderSearch();
+}
+</script>
+</body>
+</html>

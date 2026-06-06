@@ -12,6 +12,8 @@ let userCurrency = localStorage.getItem('akiya_currency') || 'EUR';
 
 let supa = null, currentUser = null, FAVS = new Set(), favView = false, authMode = 'signin';
 let _lastUserId = null;   // tracks the last signed-in user so tab-focus token refreshes don't reload
+let isAdminUser = false;  // set true after is_admin() check
+let HIDDEN = new Set(), OVERRIDES = {};   // moderation: hidden ids + per-listing field patches
 let WATCHLISTS = [], NOTIFS = [], notifSeenAt = null;
 
 // ── VIEW COUNTS / "HOT" ───────────────────────────────────────────────────────
@@ -39,6 +41,84 @@ async function loadViews() {
     if (typeof filter === 'function') filter();
     else if (typeof renderList === 'function') renderList();
   } catch { /* table not set up yet — feature stays dormant */ }
+}
+
+// ── MODERATION: apply admin hides/edits over the scraped data ────────────────
+async function applyListingOverrides() {
+  if (typeof SUPABASE_URL === 'undefined' || !SUPABASE_URL || typeof SUPABASE_ANON_KEY === 'undefined') return;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/listing_overrides?select=listing_id,hidden,patch`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY } });
+    if (!r.ok) return;
+    const rows = await r.json();
+    HIDDEN = new Set(); OVERRIDES = {};
+    (rows || []).forEach(o => { OVERRIDES[o.listing_id] = o; if (o.hidden) HIDDEN.add(o.listing_id); });
+    ALL = ALL.filter(l => !HIDDEN.has(l.id));
+    ALL.forEach(l => { const o = OVERRIDES[l.id]; if (o && o.patch) Object.assign(l, o.patch); });
+  } catch { /* overrides table not set up yet — ignore */ }
+}
+
+// ── USER REPORTS ─────────────────────────────────────────────────────────────
+const REPORT_CATEGORIES = [
+  { key: 'sold',        label: '🏷 Sold / no longer available' },
+  { key: 'duplicate',   label: '👯 Duplicate listing' },
+  { key: 'broken_link', label: '🔗 Broken source link' },
+  { key: 'wrong_data',  label: '⚠ Wrong data (price, size, address…)' },
+  { key: 'other',       label: '✏ Something else' },
+];
+let _reportListingId = null;
+function openReport(listingId) {
+  _reportListingId = listingId;
+  let ov = document.getElementById('report-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'report-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:4000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.onclick = e => { if (e.target === ov) closeReport(); };
+    ov.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border2);border-radius:14px;max-width:380px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6)">
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px">Report a problem</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Thanks for helping keep listings accurate.</div>
+      <div id="report-cats" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+        ${REPORT_CATEGORIES.map(c => `<button class="report-cat" data-cat="${c.key}" onclick="pickReportCat(this)" style="text-align:left;padding:10px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:var(--sans);font-size:13px;cursor:pointer">${c.label}</button>`).join('')}
+      </div>
+      <textarea id="report-note" placeholder="Optional details…" style="width:100%;min-height:60px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:8px;font-family:var(--sans);font-size:13px;outline:none;resize:vertical;margin-bottom:12px"></textarea>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="closeReport()" style="padding:9px 14px;border-radius:8px;border:1px solid var(--border2);background:none;color:var(--text2);font-size:13px;cursor:pointer">Cancel</button>
+        <button id="report-submit" onclick="submitReport()" style="padding:9px 16px;border-radius:8px;border:none;background:var(--accent);color:#000;font-weight:700;font-size:13px;cursor:pointer">Send report</button>
+      </div>
+    </div>`;
+    document.body.appendChild(ov);
+  }
+  ov.querySelectorAll('.report-cat').forEach(b => b.classList.remove('picked'));
+  ov.querySelectorAll('.report-cat').forEach(b => { b.style.borderColor = 'var(--border2)'; b.style.background = 'var(--surface2)'; });
+  const note = document.getElementById('report-note'); if (note) note.value = '';
+  ov.dataset.cat = '';
+  ov.style.display = 'flex';
+}
+function pickReportCat(btn) {
+  const ov = document.getElementById('report-overlay');
+  ov.querySelectorAll('.report-cat').forEach(b => { b.style.borderColor = 'var(--border2)'; b.style.background = 'var(--surface2)'; b.style.color = 'var(--text)'; });
+  btn.style.borderColor = 'var(--accent)'; btn.style.background = 'var(--accent)'; btn.style.color = '#000';
+  ov.dataset.cat = btn.dataset.cat;
+}
+function closeReport() { const ov = document.getElementById('report-overlay'); if (ov) ov.style.display = 'none'; }
+async function submitReport() {
+  const ov = document.getElementById('report-overlay');
+  const cat = ov?.dataset.cat;
+  if (!cat) { showToast('Please pick a category'); return; }
+  const note = (document.getElementById('report-note')?.value || '').slice(0, 1000);
+  const row = { listing_id: _reportListingId, category: cat, note: note || null };
+  if (currentUser) row.reporter = currentUser.id;
+  try {
+    if (supa) { await supa.from('reports').insert(row); }
+    else {
+      await fetch(`${SUPABASE_URL}/rest/v1/reports`, { method: 'POST',
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(row) });
+    }
+    showToast('✓ Report sent — thank you!');
+  } catch { showToast('⚠ Could not send report'); }
+  closeReport();
 }
 
 // Count a view (detail opened). Fire-and-forget; optimistic local bump.
@@ -151,6 +231,7 @@ async function initAuth() {
       currentUser = data.session.user;
       _lastUserId = currentUser.id;
       updateAuthUI();
+      checkAdmin();
       await loadCloudFavs();
       await loadWatchlistData(); await loadNotifs(); await loadSwipes();
       // Existing session restores as INITIAL_SESSION (not SIGNED_IN), so refresh
@@ -167,17 +248,45 @@ async function initAuth() {
       // a focus event would reset the paginated list ("loaded houses disappear").
       if (newId && newId !== _lastUserId) {
         _lastUserId = newId;
+        checkAdmin();
         await loadCloudFavs();
         await loadWatchlistData(); await loadNotifs(); await loadSwipes();
         renderWatchlists();
         await handleJoinLink();
       } else if (!newId && _lastUserId) {
-        _lastUserId = null;
+        _lastUserId = null; isAdminUser = false; updateAdminUI();
       }
     });
     await handleJoinLink();   // honor ?join=<token> invite links
   }
   updateAuthUI();
+}
+
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+async function checkAdmin() {
+  isAdminUser = false;
+  if (supa && currentUser) {
+    try { const { data } = await supa.rpc('is_admin'); isAdminUser = !!data; } catch {}
+  }
+  updateAdminUI();
+}
+function updateAdminUI() {
+  // Show any element with class .admin-only when the user is an admin
+  document.querySelectorAll('.admin-only').forEach(el => { el.style.display = isAdminUser ? '' : 'none'; });
+}
+// Admin write helpers (used by admin.html)
+async function adminSetHidden(listingId, hidden) {
+  if (!supa) return { error: 'no client' };
+  return supa.from('listing_overrides')
+    .upsert({ listing_id: listingId, hidden, updated_by: currentUser?.id, updated_at: new Date().toISOString() }, { onConflict: 'listing_id' });
+}
+async function adminPatch(listingId, patch) {
+  if (!supa) return { error: 'no client' };
+  // merge with any existing patch
+  const existing = OVERRIDES[listingId]?.patch || {};
+  const merged = { ...existing, ...patch };
+  return supa.from('listing_overrides')
+    .upsert({ listing_id: listingId, patch: merged, updated_by: currentUser?.id, updated_at: new Date().toISOString() }, { onConflict: 'listing_id' });
 }
 
 // Returns the signed-in user, recovering the session if auth init hasn't
@@ -714,6 +823,7 @@ async function loadListings() {
       ALL = (d.listings || []).filter(l => l.source !== 'AKIYA BANK');
       // A sub-¥10,000 price is a parse artifact (e.g. ¥200) → show "price on request"
       ALL.forEach(l => { if (l.price_jpy != null && l.price_jpy > 0 && l.price_jpy < 10000) l.price_jpy = null; });
+      await applyListingOverrides();   // admin hides/edits, applied over the scraped data
       if (typeof populateSources === 'function') populateSources();
       setLoading(false);
       if (typeof onDataLoaded === 'function') onDataLoaded();
@@ -1017,6 +1127,9 @@ function openDetail(id) {
       <div style="margin-top:16px;display:flex;gap:8px">
         <a href="${l.source_url}" target="_blank" style="flex:1;display:block;padding:10px;background:var(--accent);color:#000;font-weight:700;font-size:12px;text-align:center;border-radius:var(--r);text-decoration:none;letter-spacing:.04em">→ VIEW SOURCE</a>
         <a href="https://www.airbnb.com/s/${encodeURIComponent((prefToEN(l.prefecture)||'Japan')+' Japan')}/homes" target="_blank" style="flex:1;display:block;padding:10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text2);font-size:12px;text-align:center;border-radius:var(--r);text-decoration:none">🏠 Airbnb Comps</a>
+      </div>
+      <div style="margin-top:10px;text-align:center">
+        <button onclick="openReport('${l.id}')" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline">⚐ Report a problem with this listing</button>
       </div>
       ${disclaimerHTML()}
     </div>`;
