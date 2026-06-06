@@ -399,9 +399,9 @@ footer {
 
 <!-- ── RECENT LISTINGS ────────────────────────────────────────────────────────── -->
 <section class="recent">
-  <div class="recent-label">Fresh on the market</div>
+  <div class="recent-label">A random glimpse</div>
   <div class="recent-head">
-    <h2>Recent listings</h2>
+    <h2>Houses from across Japan</h2>
     <a class="hbtn" href="./search.html">Browse all →</a>
   </div>
   <div class="recent-grid" id="recent-grid">
@@ -469,7 +469,7 @@ async function loadLanding() {
     const listings = (d.listings || []).filter(l => l.source !== 'AKIYA BANK');
     document.getElementById('stat-count').textContent = listings.length.toLocaleString();
 
-    // Show 8 random recent listings with images
+    // Show 8 random listings with images (we have no reliable listing dates)
     const withImg = listings.filter(l => l.image_url);
     const sample = withImg.sort(() => Math.random() - 0.5).slice(0, 8);
     const grid = document.getElementById('recent-grid');
