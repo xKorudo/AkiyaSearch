@@ -512,12 +512,15 @@ function filter() {
     if (activeTags.has('hot') && !isHot(l.id)) return false;
     if (activeTags.has('free') && l.price_jpy !== 0) return false;
     if (activeTags.has('airbnb') && calcAirbnb(l) < 70) return false;
-    const txt = ((l.title||'')+(l.description||'')+(l.tags||[]).join(' ')).toLowerCase();
+    const txt = ((l.title||'')+(l.title_en||'')+(l.description||'')+(l.description_en||'')+(l.tags||[]).join(' ')).toLowerCase();
     if (activeTags.has('kominka') && !/(古民家|kominka|町家)/.test(txt)) return false;
     if (activeTags.has('renovated') && !/(リノベ|renovated|良好|済み)/.test(txt)) return false;
     if (activeTags.has('sea') && !/(海|ocean|beach|sea|coast)/.test(txt)) return false;
     if (activeTags.has('farm') && !/(農地|farm|farmland|農業)/.test(txt)) return false;
-    if (q) { if (!txt.includes(q) && !((l.prefecture||'')+(l.city||'')).toLowerCase().includes(q)) return false; }
+    if (q) {
+      const hay = (txt + ' ' + (prefToEN(l.prefecture)||'') + ' ' + (l.prefecture||'') + ' ' + (l.city||'')).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 
