@@ -78,6 +78,7 @@ def main():
         "admin.html",
         "stats.html",
         "prefectures.html",
+        "prefecture.html",
     ]
     for fname in static_files:
         src = os.path.join(ROOT, fname)

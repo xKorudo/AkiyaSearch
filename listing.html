@@ -365,7 +365,7 @@ function render(l){
 function prefBoxHTML(l){
   const en = prefToEN(l.prefecture) || l.prefecture || 'this prefecture';
   const s = (prefToEN(l.prefecture) || '').toLowerCase().replace(/ /g,'-');
-  const href = './prefectures.html' + (s ? ('#pref-'+s) : '');
+  const href = s ? ('./prefecture.html?p='+s) : './prefectures.html';
   return `<div class="hazard-box" style="margin-top:16px">
     <div class="hz-title">📚 About ${en}</div>
     <div class="hz-sub">What this region is known for — climate, culture, food, history.</div>

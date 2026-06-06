@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Japan's 47 Prefectures — what they're known for | Akiya Search</title>
-<meta name="description" content="A guide to all 47 Japanese prefectures — their regions, climate, culture and what they're famous for, with links to credible sources. Browse vacant akiya houses in each.">
+<meta name="description" content="A guide to all 47 Japanese prefectures and what they're famous for. Tap any prefecture to learn more, with links to credible sources, and browse vacant akiya houses there.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
 <style>
@@ -23,21 +23,20 @@ header{position:sticky;top:0;z-index:100;height:52px;background:rgba(12,12,15,.9
 .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
 .eyebrow::before{content:'';width:24px;height:1px;background:var(--accent);}
 h1{font-size:clamp(30px,4vw,46px);font-weight:800;letter-spacing:-.02em;margin-bottom:14px;}
-.intro{font-size:15px;color:var(--text2);line-height:1.7;max-width:720px;margin-bottom:10px;}
-.sources{font-size:12px;color:var(--text3);max-width:720px;margin-bottom:28px;line-height:1.6;}
-.region{margin-top:38px;}
-.region h2{font-size:21px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px;}
-.region .rjp{font-family:var(--jp);font-size:12px;color:var(--text3);margin-bottom:18px;}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;}
-.pcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;scroll-margin-top:70px;transition:border-color .2s;}
-.pcard:hover{border-color:var(--border2);}
-.pcard:target{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
-.pc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;}
-.pc-name{font-size:17px;font-weight:700;}
-.pc-jp{font-family:var(--jp);font-size:13px;color:var(--accent);}
-.pc-blurb{font-size:13.5px;color:var(--text2);line-height:1.7;flex:1;margin-bottom:14px;}
-.pc-links{display:flex;gap:16px;font-size:12px;font-family:var(--mono);}
-.pc-links a{color:var(--accent);}
+.intro{font-size:15px;color:var(--text2);line-height:1.7;max-width:720px;margin-bottom:28px;}
+.intro a{color:var(--accent);}
+.region{margin-top:36px;}
+.region h2{font-size:21px;font-weight:700;letter-spacing:-.01em;margin-bottom:2px;}
+.region .rjp{font-family:var(--jp);font-size:12px;color:var(--text3);margin-bottom:16px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.pcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px 17px;display:block;color:var(--text);transition:border-color .15s,transform .15s;}
+.pcard:hover{border-color:var(--accent);transform:translateY(-2px);text-decoration:none;}
+.pc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;}
+.pc-name{font-size:16px;font-weight:700;}
+.pc-jp{font-family:var(--jp);font-size:12px;color:var(--accent);}
+.pc-arrow{margin-left:auto;color:var(--text3);font-size:14px;}
+.pcard:hover .pc-arrow{color:var(--accent);}
+.pc-short{font-size:13px;color:var(--text2);line-height:1.55;}
 .toc{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
 .toc a{font-family:var(--mono);font-size:11px;color:var(--text2);border:1px solid var(--border2);border-radius:20px;padding:5px 11px;}
 .toc a:hover{border-color:var(--accent);color:var(--accent);text-decoration:none;}
@@ -53,109 +52,33 @@ footer{border-top:1px solid var(--border);padding:24px;max-width:1100px;margin:0
 <div class="wrap">
   <div class="eyebrow">Japan field guide</div>
   <h1>Japan's 47 prefectures</h1>
-  <p class="intro">Japan is divided into 47 prefectures (都道府県), grouped into eight regions stretching from snowbound Hokkaidō in the north to subtropical Okinawa in the south. Each has its own landscape, climate, dialect, food and history. Here's a guide to all of them and what they're known for — then jump straight to the vacant <em>akiya</em> houses there.</p>
-  <p class="sources">These are concise overviews for orientation. Each prefecture links to its <strong>Wikipedia</strong> article for credible, in-depth information; for official travel and regional data see the <a href="https://www.japan.travel/en/destinations/" target="_blank" rel="noopener">Japan National Tourism Organization (JNTO)</a>.</p>
+  <p class="intro">Japan is divided into 47 prefectures (都道府県) across eight regions, from snowbound Hokkaidō to subtropical Okinawa. Here's a quick overview of each — <strong>tap any prefecture to learn more</strong> about what it's known for, with credible sources, and to browse vacant <em>akiya</em> houses there.</p>
 
   <div class="toc" id="toc"></div>
   <div id="regions"></div>
 </div>
 
-<footer>© Akiya Search · Prefecture overviews are general knowledge for orientation; verify details via the linked Wikipedia &amp; JNTO sources.</footer>
+<footer>© Akiya Search · Prefecture overviews are general knowledge for orientation; verify details via the linked sources.</footer>
 
+<script src="js/prefectures-data.js"></script>
 <script>
-const REGIONS = [
-  { region:'Hokkaidō', jp:'北海道', items:[
-    {en:'Hokkaido', kanji:'北海道', blurb:'Japan’s northernmost and largest prefecture is a frontier of wide-open landscapes — lavender fields, volcanic national parks and some of the world’s best powder snow at resorts like Niseko and Furano. Its cool climate makes it the country’s dairy, potato and seafood capital, prized for crab, salmon and sea urchin. The lively capital Sapporo is famous for beer, miso ramen and its February Snow Festival. Low population density and many empty homes make it a magnet for those seeking space and nature.'},
-  ]},
-  { region:'Tōhoku', jp:'東北', items:[
-    {en:'Aomori', kanji:'青森', blurb:'At the northern tip of Honshū, Aomori grows the majority of Japan’s apples and stages the dazzling Nebuta Matsuri, where giant illuminated floats parade each August. The Hakkōda mountains and crater Lake Towada offer dramatic scenery and hot springs, while the Sannai-Maruyama site preserves a 5,500-year-old Jōmon village (UNESCO). Winters are long and deeply snowy, and the Tsugaru dialect and shamisen music give it a distinct identity.'},
-    {en:'Iwate', kanji:'岩手', blurb:'Honshū’s largest prefecture by area is sparsely populated and rich in nature and heritage. Hiraizumi’s golden Chūson-ji temple and gardens form a UNESCO site evoking a 12th-century Buddhist “paradise.” The jagged Sanriku coast, rebuilt after the 2011 tsunami, draws visitors for seafood and geology, while the town of Tōno is the cradle of Japanese folklore. Morioka is loved for wanko-soba and cold reimen noodles.'},
-    {en:'Miyagi', kanji:'宮城', blurb:'The hub of the Tōhoku region centers on Sendai, the green “City of Trees” founded by the legendary warlord Date Masamune. Its signature dish is gyūtan (grilled beef tongue), and just offshore lie the pine-clad islets of Matsushima, counted among Japan’s three most scenic views. A major fishing ground, the prefecture has largely recovered from the 2011 disaster and serves as a gateway to the north.'},
-    {en:'Akita', kanji:'秋田', blurb:'Famous for the loyal Akita dog, top-grade rice and sake, and the Kantō Festival where performers balance towering bamboo poles of paper lanterns. In the snowbound interior, the Namahage tradition sees “ogres” visit homes at New Year, and Lake Tazawa is Japan’s deepest. One of the most rural and fastest-aging prefectures, it has abundant hot springs and many akiya.'},
-    {en:'Yamagata', kanji:'山形', blurb:'A mountainous prefecture of fruit and pilgrimage. It is Japan’s top cherry producer and grows superb pears and grapes, while Mt. Zaō’s frost-covered “snow monsters” and the three sacred peaks of Dewa Sanzan draw visitors year-round. The silver-mining spa town of Ginzan Onsen is famously atmospheric, and the cliffside temple of Yamadera offers sweeping views. Quiet, snowy and traditional.'},
-    {en:'Fukushima', kanji:'福島', blurb:'Japan’s third-largest prefecture spans coast, farmland and highlands. The Aizu-Wakamatsu region preserves samurai history around Tsuruga Castle, and the thatched Edo-era post town of Ōuchi-juku is a highlight. It is known for peaches, rice and sake. While the 2011 nuclear accident affected a coastal zone, most of the prefecture is open and safe, and revitalization has renewed interest in its towns.'},
-  ]},
-  { region:'Kantō', jp:'関東', items:[
-    {en:'Ibaraki', kanji:'茨城', blurb:'Just northeast of Tokyo, Ibaraki blends farmland and seaside. Hitachi Seaside Park bursts with blue nemophila in spring and crimson kochia in autumn, and the prefecture is the home of nattō (fermented soybeans). Mt. Tsukuba offers easy hiking and views, Tsukuba Science City is a research hub, and Kairaku-en in Mito — one of Japan’s three great gardens — is famed for its plum blossoms.'},
-    {en:'Tochigi', kanji:'栃木', blurb:'An inland Kantō prefecture best known for Nikkō, whose ornate Tōshō-gū shrine (UNESCO) enshrines shogun Tokugawa Ieyasu amid waterfalls and towering cedars. It grows more strawberries than anywhere in Japan, and Ashikaga Flower Park’s illuminated wisteria is world-renowned. The capital, Utsunomiya, is famous nationwide for its gyōza dumplings.'},
-    {en:'Gunma', kanji:'群馬', blurb:'A landlocked, mountainous prefecture celebrated for its hot springs — Kusatsu, Ikaho and Minakami rank among Japan’s finest. It has a proud history of silk production (the Tomioka Silk Mill is UNESCO-listed) and dramatic peaks for hiking, rafting and skiing. Daruma good-luck dolls and konnyaku are local specialties.'},
-    {en:'Saitama', kanji:'埼玉', blurb:'A populous prefecture forming Tokyo’s northern suburbs, yet with real character. Kawagoe (“Little Edo”) preserves clay-walled merchant streets and a wooden bell tower, while the Chichibu mountains offer hiking, festivals and night vistas. Affordable and well-connected, it appeals to commuters, and is known for sembei rice crackers and Sayama tea.'},
-    {en:'Chiba', kanji:'千葉', blurb:'Wrapping around Tokyo Bay, Chiba hosts Narita International Airport and the Tokyo Disney Resort (which actually sits here). The Bōsō Peninsula has surf beaches, fishing ports and flower fields, plus the clifftop temple of Nokogiriyama. It is a major producer of peanuts and a historic heart of soy-sauce brewing in Noda and Chōshi.'},
-    {en:'Tokyo', kanji:'東京', blurb:'Japan’s capital and the world’s largest metropolitan area, Tokyo is the engine of the nation’s business, fashion, food and pop culture. Neon districts like Shinjuku and Shibuya contrast with serene imperial gardens, historic Asakusa and more Michelin-starred restaurants than any other city. Beyond the centre, the prefecture stretches to western mountains and remote Pacific islands (the Ogasawara group is a UNESCO natural site).'},
-    {en:'Kanagawa', kanji:'神奈川', blurb:'Densely populated and varied, just south of Tokyo. Yokohama is Japan’s second-largest city, with a historic port, Chinatown and modern waterfront, while ancient Kamakura offers its Great Buddha and seaside temples. Hakone is a premier hot-spring resort with views of Mt. Fuji over Lake Ashi, and Enoshima draws beachgoers and surfers.'},
-  ]},
-  { region:'Chūbu', jp:'中部', items:[
-    {en:'Niigata', kanji:'新潟', blurb:'A long prefecture on the Sea of Japan, Niigata is rice and sake country — its Koshihikari rice and many breweries are nationally prized. Heavy winter snowfall makes it the “snow country” of Kawabata’s novel, with abundant ski resorts and onsen. Off the coast, Sado Island offers folk culture, gold-mine history and the rare crested ibis.'},
-    {en:'Toyama', kanji:'富山', blurb:'Hemmed by the Northern Alps and a deep bay, Toyama is famed for the Tateyama Kurobe Alpine Route, where spring snow walls tower far overhead. The bay yields glowing firefly squid and sweet white shrimp, and the city is a centre for contemporary glass art. Gokayama’s thatched gasshō villages (UNESCO) sit deep in its mountains.'},
-    {en:'Ishikawa', kanji:'石川', blurb:'Culturally rich Ishikawa centres on Kanazawa, a former castle town that escaped wartime bombing and preserves geisha and samurai districts alongside Kenroku-en, one of Japan’s three great gardens. It produces almost all of Japan’s gold leaf, plus renowned Wajima lacquerware and Kutani porcelain. The rugged Noto Peninsula adds coastline and tradition.'},
-    {en:'Fukui', kanji:'福井', blurb:'A quiet prefecture with outsized attractions: the Fukui Dinosaur Museum sits atop Japan’s richest fossil beds, the vast Eihei-ji is a head temple of Sōtō Zen, and the basalt cliffs of Tōjinbō plunge into the sea. It is also a leading maker of high-quality eyeglasses and prized Echizen crab.'},
-    {en:'Yamanashi', kanji:'山梨', blurb:'Landlocked and mountainous, Yamanashi offers the classic Mt. Fuji views from the Fuji Five Lakes around Kawaguchiko. It is Japan’s leading wine region, built on the native Kōshū grape, and a top producer of peaches and grapes. Hot springs, fruit-picking and hiking in the Southern Alps make it a popular weekend escape from Tokyo.'},
-    {en:'Nagano', kanji:'長野', blurb:'A high, alpine prefecture that hosted the 1998 Winter Olympics, Nagano is defined by the Japanese Alps, world-class ski resorts and the snow monkeys of Jigokudani who bathe in steaming pools. The ancient temple Zenkō-ji anchors the capital, Matsumoto has a striking black “Crow” castle, and the region is famous for soba, apples and wasabi.'},
-    {en:'Gifu', kanji:'岐阜', blurb:'Stretching from river plains to deep mountains, Gifu is home to Shirakawa-gō’s steep thatched gasshō farmhouses (UNESCO) and the beautifully preserved old town of Takayama. Gujō Hachiman is known for summer river dancing and food-replica craft, while cormorant fishing on the Nagara River is a 1,300-year-old tradition. Marbled Hida beef is a local treasure.'},
-    {en:'Shizuoka', kanji:'静岡', blurb:'Facing the Pacific with Mt. Fuji rising behind it, Shizuoka grows much of Japan’s green tea and its finest wasabi. The Izu Peninsula offers hot springs and coastline, Lake Hamana is known for eel, and deep Suruga Bay supplies delicate sakura shrimp. It is an industrial powerhouse too, home to major musical-instrument and motorcycle makers.'},
-    {en:'Aichi', kanji:'愛知', blurb:'An economic heavyweight centred on Nagoya, Japan’s fourth-largest city and the heart of the Toyota automotive empire. It blends heavy industry with history — Nagoya Castle, the sacred Atsuta Shrine and the legacy of the unifiers Nobunaga and Ieyasu. Its hearty “Nagoya-meshi” cuisine, from miso-katsu to hitsumabushi eel, has a devoted following.'},
-  ]},
-  { region:'Kansai (Kinki)', jp:'関西', items:[
-    {en:'Mie', kanji:'三重', blurb:'Home to the Ise Grand Shrine, the most sacred site in Shintō, ritually rebuilt every 20 years. Mie is the birthplace of cultured pearls (Mikimoto) and prized Matsusaka beef, while the Iga area is steeped in ninja history. The Kumano coastline, Ise-Shima National Park and the Suzuka racing circuit round out a surprisingly varied prefecture.'},
-    {en:'Shiga', kanji:'滋賀', blurb:'Wrapped around Lake Biwa, Japan’s largest freshwater lake, Shiga offers water sports, cycling and lakeside temples. It preserves one of only twelve original castle keeps at Hikone (with its mascot Hikonyan) and the vast Enryaku-ji monastery on Mt. Hiei (UNESCO). Close to Kyoto yet greener and far more affordable.'},
-    {en:'Kyoto', kanji:'京都', blurb:'Japan’s capital for over a thousand years, Kyoto is the heart of traditional culture, with 17 UNESCO sites including Kinkaku-ji, Kiyomizu-dera and the torii tunnels of Fushimi Inari. Geisha districts like Gion, refined kaiseki cuisine, tea ceremony and centuries-old crafts endure here. Beyond the famous city, the prefecture reaches north to a quiet Sea of Japan coast.'},
-    {en:'Osaka', kanji:'大阪', blurb:'Japan’s boisterous second metropolis and historic merchant city, Osaka is the nation’s kitchen — takoyaki, okonomiyaki and street food along neon-lit Dōtonbori. Osaka Castle, a thriving comedy scene, Universal Studios Japan and famously warm, blunt locals define it. It hosted Expo 2025 and is a major business and transport hub.'},
-    {en:'Hyogo', kanji:'兵庫', blurb:'A diverse prefecture spanning two coasts. Cosmopolitan Kobe, rebuilt after the 1995 earthquake, gave the world Kobe beef and a stylish port culture. Himeji’s brilliant white castle is Japan’s finest surviving fortress (UNESCO), while Arima and Kinosaki are beloved hot-spring towns and Awaji Island guards the famous whirlpools.'},
-    {en:'Nara', kanji:'奈良', blurb:'Japan’s first permanent capital in the 8th century, Nara is where Buddhism flourished. In Nara Park, free-roaming sacred deer surround Tōdai-ji’s colossal Great Buddha and Kasuga Shrine (UNESCO). Beyond the city, Yoshino is renowned for its cherry blossoms and the Ōmine and Kumano pilgrimage mountains stretch south.'},
-    {en:'Wakayama', kanji:'和歌山', blurb:'A spiritual, rugged prefecture on the Kii Peninsula. Kōya-san is the mountaintop centre of Shingon Buddhism, with the atmospheric Okunoin cemetery, and the Kumano Kodō pilgrimage routes (UNESCO) wind to grand shrines and the towering Nachi Falls. It is also Japan’s top producer of mikan oranges and ume plums, with rustic coastal onsen.'},
-  ]},
-  { region:'Chūgoku', jp:'中国', items:[
-    {en:'Tottori', kanji:'鳥取', blurb:'Japan’s least-populous prefecture is known for the sweeping Tottori Sand Dunes along the Sea of Japan and the adjacent Sand Museum’s carvings. It is the home turf of manga heroes such as Detective Conan and GeGeGe no Kitarō, with dedicated museums, and offers crab, pears and the sacred Mt. Daisen for hiking and skiing.'},
-    {en:'Shimane', kanji:'島根', blurb:'A remote, myth-steeped prefecture. Izumo Taisha is one of Japan’s oldest and most important shrines, tied to legends of the gods’ annual gathering. Matsue, the “water city,” keeps an original castle, the Iwami Ginzan silver mine is a UNESCO site, and the windswept Oki Islands form a UNESCO Global Geopark.'},
-    {en:'Okayama', kanji:'岡山', blurb:'Blessed with mild “sunny country” weather, Okayama boasts Kōraku-en, one of Japan’s three great gardens, beside its black “Crow Castle.” The canal-lined Bikan district of Kurashiki charms with white-walled storehouses and art museums. It is famous for white peaches and Muscat grapes, and as the home of the Momotarō peach-boy legend.'},
-    {en:'Hiroshima', kanji:'広島', blurb:'A prefecture of remembrance and beauty. Hiroshima’s Peace Memorial Park and A-Bomb Dome (UNESCO) commemorate the 1945 atomic bombing and the city’s remarkable revival. Nearby, Miyajima’s “floating” Itsukushima torii (UNESCO) is one of Japan’s iconic images. The region is loved for layered Hiroshima-style okonomiyaki and Seto Inland Sea oysters.'},
-    {en:'Yamaguchi', kanji:'山口', blurb:'At Honshū’s western tip, Yamaguchi mixes nature and history. The Akiyoshidō is Japan’s largest limestone cavern, beneath a vast karst plateau; the five-arched wooden Kintai-kyō bridge spans Iwakuni; and Shimonoseki is the nation’s capital of fugu (pufferfish). The area played a pivotal role in the Meiji Restoration.'},
-  ]},
-  { region:'Shikoku', jp:'四国', items:[
-    {en:'Tokushima', kanji:'徳島', blurb:'On Shikoku’s east, Tokushima is synonymous with Awa Odori, Japan’s most famous dance festival, which draws huge crowds each August. The Naruto Strait churns with giant tidal whirlpools, the remote Iya Valley hides vine bridges deep in the mountains, and the region is known for indigo dyeing (ai) and fragrant sudachi citrus.'},
-    {en:'Kagawa', kanji:'香川', blurb:'Japan’s smallest prefecture is the self-styled “udon prefecture,” devoted to chewy Sanuki udon. It anchors the Setouchi art scene with the museums and installations of Naoshima and Teshima, the elegant garden Ritsurin-kōen, and Kotohira-gū shrine’s long stone stairway. Olive cultivation thrives on sunny Shōdoshima.'},
-    {en:'Ehime', kanji:'愛媛', blurb:'Facing the Seto Inland Sea, Ehime is citrus country — mikan and dozens of varieties — and home to Dōgo Onsen, said to be Japan’s oldest hot spring and an inspiration for “Spirited Away.” Matsuyama has a hilltop original castle, and the Shimanami Kaidō cycling route island-hops dramatically across to Hiroshima.'},
-    {en:'Kochi', kanji:'高知', blurb:'Occupying Shikoku’s wild Pacific south, Kōchi is famed for seared bonito (katsuo no tataki), the clear, dam-free Shimanto River, and the reformer Sakamoto Ryōma. It keeps an original castle, the dramatic capes of Muroto and Ashizuri, and a famously independent, open-air spirit; much of it is mountainous and deeply rural.'},
-  ]},
-  { region:'Kyūshū & Okinawa', jp:'九州・沖縄', items:[
-    {en:'Fukuoka', kanji:'福岡', blurb:'Kyūshū’s largest city and gateway, Fukuoka is famous for rich Hakata tonkotsu ramen and the lively yatai street-food stalls that line its river at night. A youthful, fast-growing business hub closer to Seoul than Tokyo, it hosts the energetic Yamakasa festival, the scholarly Dazaifu shrine, and easy access to beaches and mountains.'},
-    {en:'Saga', kanji:'佐賀', blurb:'A small but craft-rich prefecture, Saga is the cradle of Japanese porcelain — Arita, Imari and Karatsu wares have been made here for some 400 years. The Saga International Balloon Fiesta is Asia’s largest, Yoshinogari preserves a huge moated Yayoi-era settlement, and Ureshino is known for green tea and silky onsen.'},
-    {en:'Nagasaki', kanji:'長崎', blurb:'A port prefecture shaped by centuries of contact with the outside world — Dutch and Portuguese trade through Dejima, a hidden Christian history (UNESCO), and the solemn legacy of the 1945 atomic bombing, now a city devoted to peace. Its islands, hillside Glover Garden, Chinatown and the theme park Huis Ten Bosch reflect a uniquely cosmopolitan heritage.'},
-    {en:'Kumamoto', kanji:'熊本', blurb:'Centred on its mighty reconstructed castle, Kumamoto sits beside Mt. Aso, one of the world’s largest active volcanic calderas, ringed by grasslands and hot springs. Pure spring water, horse-meat sashimi (basashi) and the wildly popular mascot Kumamon are local icons. The 2016 earthquakes prompted a major, still-ongoing restoration.'},
-    {en:'Oita', kanji:'大分', blurb:'Japan’s “onsen prefecture,” Ōita has more hot-spring sources and greater output than anywhere else — steaming Beppu with its colourful “hells” and the chic, artsy hills of Yufuin lead the way. The Kunisaki Peninsula holds ancient Buddhist stone carvings, and the region is known for kabosu citrus and toriten chicken tempura.'},
-    {en:'Miyazaki', kanji:'宮崎', blurb:'A sunny south-eastern coast prefecture of myth and leisure. Takachiho Gorge is bound up with Japan’s creation legends, the Nichinan coast offers surfing and the shrine-island of Aoshima, and the warm climate yields mangoes and Hyūganatsu citrus. It is also famed for prize-winning Miyazaki wagyu beef.'},
-    {en:'Kagoshima', kanji:'鹿児島', blurb:'At Kyūshū’s southern tip, Kagoshima lives in the shadow of the smoking Sakurajima volcano across its bay, earning the nickname “Naples of the East.” As the powerful Satsuma domain it helped topple the shogunate; it is the birthplace of sweet-potato shōchū and reaches to subtropical islands such as Yakushima (UNESCO ancient cedars) and the Tanegashima space centre.'},
-    {en:'Okinawa', kanji:'沖縄', blurb:'Japan’s southern chain of subtropical islands was formerly the independent Ryūkyū Kingdom, with its own language, music, cuisine and the restored Shuri Castle. Coral reefs, white-sand beaches and diving draw visitors, while the traditional Okinawan diet and lifestyle are linked to world-famous longevity. The islands also carry a complex WWII and US-base history.'},
-  ]},
-];
-
-function wiki(en){
-  if (en === 'Hokkaido') return 'https://en.wikipedia.org/wiki/Hokkaido';
-  if (en === 'Tokyo') return 'https://en.wikipedia.org/wiki/Tokyo';
-  return 'https://en.wikipedia.org/wiki/' + en.replace(/ /g,'_') + '_Prefecture';
-}
-function slug(en){ return en.toLowerCase().replace(/ /g,'-'); }
-
 const toc = document.getElementById('toc');
 const wrapEl = document.getElementById('regions');
-REGIONS.forEach((r, i) => {
+PREF_REGION_ORDER.forEach((region, i) => {
+  const items = PREFECTURES.filter(p => p.region === region);
+  if (!items.length) return;
   const id = 'r' + i;
-  const a = document.createElement('a'); a.href = '#' + id; a.textContent = r.region; toc.appendChild(a);
+  const a = document.createElement('a'); a.href = '#' + id; a.textContent = region; toc.appendChild(a);
+  const jp = items[0] ? '' : '';
   const sec = document.createElement('div'); sec.className = 'region'; sec.id = id;
-  sec.innerHTML = `<h2>${r.region}</h2><div class="rjp">${r.jp}</div>
-    <div class="grid">${r.items.map(p => `
-      <div class="pcard" id="pref-${slug(p.en)}">
-        <div class="pc-head"><span class="pc-name">${p.en}</span><span class="pc-jp">${p.kanji}</span></div>
-        <div class="pc-blurb">${p.blurb}</div>
-        <div class="pc-links">
-          <a href="${wiki(p.en)}" target="_blank" rel="noopener">Wikipedia ↗</a>
-          <a href="./search.html?pref=${encodeURIComponent(p.kanji)}">Browse akiya →</a>
-        </div>
-      </div>`).join('')}</div>`;
+  sec.innerHTML = `<h2>${region}</h2>
+    <div class="grid">${items.map(p => `
+      <a class="pcard" href="./prefecture.html?p=${prefSlug(p.en)}">
+        <div class="pc-head"><span class="pc-name">${p.en}</span><span class="pc-jp">${p.kanji}</span><span class="pc-arrow">→</span></div>
+        <div class="pc-short">${p.short}</div>
+      </a>`).join('')}</div>`;
   wrapEl.appendChild(sec);
 });
-// Re-trigger :target scroll once cards exist (deep links from listing pages)
-if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
 </script>
 </body>
 </html>
