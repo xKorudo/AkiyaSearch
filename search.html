@@ -542,7 +542,7 @@ function renderList(append) {
     container.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-jp">空</div><div>No properties found</div></div>';
     return;
   }
-  if (!append) { renderedCount = 0; container.innerHTML = ''; }
+  if (!append) { renderedCount = 0; container.innerHTML = ''; container.scrollTop = 0; }
   const next = FILTERED.slice(renderedCount, renderedCount + PAGE_SIZE);
   renderedCount += next.length;
   container.insertAdjacentHTML('beforeend', next.map(cardHTML).join(''));
