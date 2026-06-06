@@ -897,6 +897,7 @@ function cardHTML(l) {
       ${img}${placeholder}
       <div class="lcard-badges">${badgeHot}${badgeFree}${badgeCheap}${badgeAB}</div>
       <button class="fav-btn ${isFav(l.id)?'on':''}" onclick="event.stopPropagation();event.preventDefault();toggleFav('${l.id}',this)" title="Save to favorites">${isFav(l.id)?'♥':'♡'}</button>
+      <button class="report-flag" onclick="event.stopPropagation();event.preventDefault();openReport('${l.id}')" title="Report a problem (sold, duplicate, wrong data…)">⚑</button>
     </div>
     <div class="lcard-body">
       <div class="lcard-location">${prefEN}${l.city ? ' · '+l.city : ''}</div>
