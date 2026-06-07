@@ -52,6 +52,10 @@ jobs:
           restore-keys: |
             akiya-db-
 
+      - name: Backfill first_seen for existing listings (runs once, no-ops after)
+        run: python backfill_first_seen.py
+        continue-on-error: true
+
       - name: Scrape (incremental)
         run: python run_pipeline.py
         env:
