@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from deep_translator import GoogleTranslator
 
 # Approximate prefecture centroids
@@ -53,26 +54,43 @@ def _load_existing_translations():
         return {}
 
 
-def enrich(listings):
-    existing = _load_existing_translations()
-    skipped = 0
+_WORKERS = 5   # concurrent translation requests
 
+
+def _translate_listing(l):
+    return l, translate(l.title), translate(l.description)
+
+
+def enrich(listings):
+    import random
+    existing = _load_existing_translations()
+
+    new_listings, reuse_listings = [], []
     for l in listings:
-        # Coordinates from prefecture centroid (scattered so markers don't stack)
         coords = PREF_COORDS.get(l.prefecture)
         if coords:
-            import random
             l.lat = coords[0] + random.uniform(-0.5, 0.5)
             l.lng = coords[1] + random.uniform(-0.5, 0.5)
-
-        # Reuse existing translation — only call the API for truly new listings
         if l.id in existing:
-            l.title_en, l.description_en = existing[l.id]
-            skipped += 1
+            reuse_listings.append(l)
         else:
-            l.title_en = translate(l.title)
-            l.description_en = translate(l.description)
+            new_listings.append(l)
 
-    new_count = len(listings) - skipped
-    print(f"  Translated {new_count} new listing(s) ({skipped} reused from DB).")
+    # Restore existing translations
+    for l in reuse_listings:
+        l.title_en, l.description_en = existing[l.id]
+
+    # Translate new listings in parallel
+    if new_listings:
+        with ThreadPoolExecutor(max_workers=_WORKERS) as pool:
+            futures = {pool.submit(_translate_listing, l): l for l in new_listings}
+            for fut in as_completed(futures):
+                try:
+                    l, title_en, desc_en = fut.result()
+                    l.title_en = title_en or ""
+                    l.description_en = desc_en or ""
+                except Exception:
+                    pass
+
+    print(f"  Translated {len(new_listings)} new listing(s) ({len(reuse_listings)} reused from DB).")
     return listings
