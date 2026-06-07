@@ -364,8 +364,8 @@ def scrape(mode="fresh", max_pages=100):
 
         # Persist deep cursor so next run continues from here
         if mode == "deep" and new_cursor is not None:
-            # next run: start one page shallower (continue toward page 1)
-            set_deep_cursor(pref_jp, max(new_cursor - 1, 1))
+            # next run: start 1 page back (overlap covers SUUMO drift)
+            set_deep_cursor(pref_jp, new_cursor)
 
         # Early-bail ONLY on real blocks (not on prefectures that are simply
         # exhausted) so we don't keep hammering a blocked IP.
