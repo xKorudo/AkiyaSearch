@@ -1,3 +1,4 @@
+import time
 import threading
 from deep_translator import GoogleTranslator
 
@@ -22,6 +23,9 @@ PREF_COORDS = {
 }
 
 _translator = GoogleTranslator(source='ja', target='en')
+_CALL_TIMEOUT = 10   # seconds per individual translate() call
+_MAX_RETRIES  = 3    # attempts before giving up (saving empty, backfill catches it)
+_RETRY_WAITS  = [1, 3]  # seconds between retries (len = _MAX_RETRIES - 1)
 
 
 def translate(text: str) -> str:
@@ -30,16 +34,24 @@ def translate(text: str) -> str:
     non_ascii = sum(1 for c in text if ord(c) > 127)
     if non_ascii < 2:
         return text
-    result = [""]
-    def _do():
-        try:
-            result[0] = _translator.translate(text[:500]) or ""
-        except Exception:
-            pass
-    t = threading.Thread(target=_do, daemon=True)
-    t.start()
-    t.join(timeout=10)   # never hang longer than 10s per call
-    return result[0]
+
+    for attempt in range(_MAX_RETRIES):
+        result = [""]
+        def _do():
+            try:
+                result[0] = _translator.translate(text[:500]) or ""
+            except Exception:
+                pass
+        t = threading.Thread(target=_do, daemon=True)
+        t.start()
+        t.join(timeout=_CALL_TIMEOUT)
+        if result[0]:
+            return result[0]
+        # Wait before retry (except on last attempt)
+        if attempt < len(_RETRY_WAITS):
+            time.sleep(_RETRY_WAITS[attempt])
+
+    return ""  # backfill_translations.py will catch this on the next pass
 
 
 def _load_existing_translations():
@@ -79,5 +91,5 @@ def enrich(listings):
             l.description_en = translate(l.description)
 
     new_count = len(listings) - skipped
-    print(f"  Translated {new_count} new listings ({skipped} reused from DB).")
+    print(f"  Translated {new_count} new listing(s) ({skipped} reused from DB).")
     return listings
