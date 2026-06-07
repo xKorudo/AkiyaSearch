@@ -77,7 +77,10 @@ if (!P) {
   wrap.innerHTML = '<div style="padding:40px 0;color:var(--text3)">Prefecture not found. <a href="./prefectures.html">See all prefectures →</a></div>';
 } else {
   document.title = P.en + ' (' + P.kanji + ') — what it\'s known for | Akiya Search';
-  const paras = (Array.isArray(P.long) ? P.long : [P.long]).map(p => `<p class="long">${p}</p>`).join('');
+  const extra = (window.PREF_EXTRA || {})[slug];
+  const allParas = (Array.isArray(P.long) ? P.long.slice() : [P.long]);
+  if (extra) allParas.push(extra);
+  const paras = allParas.map(p => `<p class="long">${p}</p>`).join('');
   const sib = PREFECTURES.filter(x => x.region === P.region && x.en !== P.en);
   wrap.innerHTML = `
     <div class="crumb"><a href="./prefectures.html">Prefectures</a> · ${P.region}</div>

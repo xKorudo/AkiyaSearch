@@ -51,23 +51,47 @@ def main():
     # listings than this local DB. If the live site already has more, keep those
     # so a local frontend-only deploy doesn't clobber the bigger dataset.
     # (Set ALLOW_SHRINK=1 to override, e.g. after a fresh full local rebuild.)
+    # Merge with the live dataset instead of replacing it. The CI DB cache can
+    # fork (scrape + backfills run in parallel) or be evicted, so neither local
+    # nor live is always the superset. Union by id — keeping the richer record
+    # per listing — so the dataset only ever GROWS and freshly scraped listings
+    # are never dropped. (Set ALLOW_SHRINK=1 to skip and deploy local only.)
     if os.environ.get("ALLOW_SHRINK") != "1":
         try:
             import urllib.request
-            req = urllib.request.Request(LIVE_URL, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-            live0 = json.load(urllib.request.urlopen(req, timeout=25))
-            if live0.get("count", 0) > len(listings):
-                live_count = live0["count"]
-                live_chunks = live0.get("chunks", 1)
-                print(f"Live site has {live_count} listings (> local {len(listings)}) — keeping live data.")
-                # Reconstruct listings from all live chunks
-                listings = list(live0.get("listings", []))
-                for i in range(1, live_chunks):
-                    chunk_url = LIVE_URL.replace("listings-0.json", f"listings-{i}.json")
-                    req_i = urllib.request.Request(chunk_url, headers={"User-Agent": "Mozilla/5.0"})
-                    listings += json.load(urllib.request.urlopen(req_i, timeout=25)).get("listings", [])
+
+            def _fetch(url):
+                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                return json.load(urllib.request.urlopen(req, timeout=25))
+
+            def _score(l):  # richer = more images, then has EN desc, then geocoded
+                return (len(l.get("images") or []),
+                        1 if l.get("description_en") else 0,
+                        1 if l.get("lat") else 0)
+
+            live0 = _fetch(LIVE_URL)
+            live = list(live0.get("listings", []))
+            for i in range(1, live0.get("chunks", 1)):
+                live += _fetch(LIVE_URL.replace("listings-0.json", f"listings-{i}.json")).get("listings", [])
+
+            merged = {l["id"]: l for l in live if l.get("id")}
+            added = 0
+            for l in listings:
+                cur = merged.get(l["id"])
+                if cur is None:
+                    added += 1
+                if cur is None or _score(l) >= _score(cur):
+                    merged[l["id"]] = l   # local (fresh) wins on ties
+            print(f"Merged local ({len(listings)}) + live ({len(live)}) -> {len(merged)} listings ({added} new).")
+            listings = list(merged.values())
         except Exception as e:
-            print("  (could not check live dataset:", type(e).__name__, "— using local)")
+            # A transient live-fetch failure must NOT clobber the live dataset with
+            # a smaller local one. Abort instead (set ALLOW_SHRINK=1 to override).
+            print("  (could not fetch/merge live dataset:", type(e).__name__, str(e), ")")
+            raise SystemExit(
+                "Aborting export: could not verify the live dataset, so refusing to "
+                "risk shrinking it. Re-run, or set ALLOW_SHRINK=1 to deploy local data as-is."
+            )
 
     # Write chunks — each under CHUNK_SIZE listings so no file exceeds CF's 25 MiB limit
     chunks = [listings[i:i + CHUNK_SIZE] for i in range(0, max(len(listings), 1), CHUNK_SIZE)]
