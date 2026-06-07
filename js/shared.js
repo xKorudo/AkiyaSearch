@@ -863,16 +863,23 @@ async function loadListings() {
   } catch { /* fall through */ }
 
   // 2. Chunked static files (Cloudflare Pages)
+  // Start chunk 0 and speculatively chunk 1 simultaneously — eliminates the
+  // waterfall where chunk 1 couldn't begin until chunk 0 was fully parsed.
   try {
-    const r0 = await fetch('./listings-0.json');
-    if (r0.ok) {
-      const d0 = await r0.json();
+    const p0 = fetch('./listings-0.json').then(r => r.ok ? r.json() : null).catch(() => null);
+    const p1 = fetch('./listings-1.json').then(r => r.ok ? r.json() : null).catch(() => null);
+    const d0 = await p0;
+    if (d0) {
       const nChunks = d0.chunks || 1;
       let all = d0.listings || [];
-      if (nChunks > 1) {
+      if (nChunks >= 2) {
+        const d1 = await p1;
+        if (d1) all = all.concat(d1.listings || []);
+      }
+      if (nChunks > 2) {
         const rest = await Promise.all(
-          Array.from({ length: nChunks - 1 }, (_, i) =>
-            fetch(`./listings-${i + 1}.json`).then(r => r.json()).then(d => d.listings || [])
+          Array.from({ length: nChunks - 2 }, (_, i) =>
+            fetch(`./listings-${i + 2}.json`).then(r => r.json()).then(d => d.listings || []).catch(() => [])
           )
         );
         rest.forEach(chunk => { all = all.concat(chunk); });
