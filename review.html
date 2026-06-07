@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review Duplicates — Akiya Search</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://wmevbetyxqhtprdahxqh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtZXZiZXR5eHFodHByZGFoeHFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzAyOTcsImV4cCI6MjA5NjE0NjI5N30.jd5TDcGI0dlSpypjuoPtdOuqhBhkf_ouX5MMg4oSfSI";
+</script>
+<link rel="stylesheet" href="css/admin.css">
+<style>
+.pair-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.pair-col{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;}
+.pair-img{width:100%;height:130px;object-fit:cover;border-radius:6px;margin-bottom:10px;background:var(--surface3);display:block;}
+.pair-img-empty{width:100%;height:130px;border-radius:6px;margin-bottom:10px;background:var(--surface3);}
+.pair-title{font-size:13px;font-weight:600;margin-bottom:6px;line-height:1.4;}
+.pair-meta{font-size:12px;color:var(--text2);display:flex;flex-direction:column;gap:3px;margin-bottom:8px;font-family:var(--mono);}
+.score-badge{font-family:var(--mono);font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:2px 8px;display:inline-block;}
+.score-hi{color:var(--red);border-color:var(--red);}
+@media(max-width:600px){.pair-grid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="./">🏚 <span>Akiya</span> Search</a>
+  <span class="badge-admin">REVIEW</span>
+  <a class="back" href="./admin.html">Admin →</a>
+  <a class="back" href="./search.html" style="margin-left:14px">← App</a>
+</header>
+
+<div id="gate" class="gate">Checking access…</div>
+<div id="wrap" class="wrap" style="display:none">
+  <h2>🔍 Pending duplicate reviews</h2>
+  <p style="font-size:13px;color:var(--text2);margin-bottom:20px">
+    These listing pairs scored ≥ 90/100 on prefecture · city · price · size similarity.
+    Review each pair and either dismiss (not a duplicate) or hide the copy.
+  </p>
+  <div id="reviews"><div class="empty">Loading…</div></div>
+</div>
+
+<script src="js/shared.js"></script>
+<script>
+let LMAP = {};
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await initAuth();
+  await checkAdmin();
+
+  if (!isAdminUser) {
+    document.getElementById('gate').innerHTML = currentUser
+      ? 'You are signed in but not an admin.<br><span class="muted">Ask an existing admin to grant access.</span>'
+      : 'Admin area — please <a class="lnk" href="./search.html">sign in</a> with an admin account first.';
+    return;
+  }
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('wrap').style.display = '';
+  await loadListingMap();
+  loadReviews();
+});
+
+async function loadListingMap() {
+  try {
+    const r0 = await fetch('./listings-0.json');
+    if (!r0.ok) return;
+    const d0 = await r0.json();
+    const all = [...(d0.listings || [])];
+    for (let i = 1; i < (d0.chunks || 1); i++) {
+      try {
+        const ri = await fetch(`./listings-${i}.json`);
+        if (ri.ok) all.push(...((await ri.json()).listings || []));
+      } catch {}
+    }
+    all.forEach(l => { LMAP[l.id] = l; });
+  } catch {}
+}
+
+async function loadReviews() {
+  const box = document.getElementById('reviews');
+  const { data, error } = await supa
+    .from('pending_reviews')
+    .select('*')
+    .eq('status', 'pending')
+    .order('score', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (error) { box.innerHTML = `<div class="empty">Could not load: ${error.message}</div>`; return; }
+  if (!data || !data.length) { box.innerHTML = '<div class="empty">No pending reviews 🎉</div>'; return; }
+  box.innerHTML = data.map(renderPair).join('');
+}
+
+function fmtPrice(p) {
+  if (!p) return '要確認';
+  if (p >= 100_000_000) return `¥${(p / 100_000_000).toFixed(1)}億`;
+  if (p >= 10_000_000)  return `¥${(p / 10_000_000).toFixed(1)}千万`;
+  if (p >= 1_000_000)   return `¥${(p / 1_000_000).toFixed(1)}M`;
+  return `¥${p.toLocaleString()}`;
+}
+
+function renderCol(l) {
+  if (!l) return '<div class="pair-col" style="opacity:.35;font-size:12px;color:var(--text3);display:flex;align-items:center;justify-content:center;">Not in current export</div>';
+  const imgs = l.images || [];
+  const img = imgs[0] || l.image_url || '';
+  return `<div class="pair-col">
+    ${img
+      ? `<img class="pair-img" src="${img}" loading="lazy" onerror="this.style.display='none'">`
+      : '<div class="pair-img-empty"></div>'}
+    <div class="pair-title">${l.title_en || l.title || l.id}</div>
+    <div class="pair-meta">
+      <span>📍 ${[l.prefecture, l.city].filter(Boolean).join(' ')}</span>
+      <span>💴 ${fmtPrice(l.price_jpy)}</span>
+      <span>📐 ${l.size_m2 != null ? l.size_m2 + ' m²' : '—'}</span>
+      <span>🔗 ${l.source || ''}</span>
+    </div>
+    <a class="lnk" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank">Open listing ↗</a>
+  </div>`;
+}
+
+function renderPair(r) {
+  const la = LMAP[r.listing_a_id];
+  const lb = LMAP[r.listing_b_id];
+  const hi = r.score >= 95;
+  return `<div class="card" id="pair-${r.id}">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <span class="score-badge ${hi ? 'score-hi' : ''}">${r.score}/100</span>
+      <span class="muted">${new Date(r.created_at).toLocaleDateString()}</span>
+      <span class="muted" style="font-size:11px">${r.listing_a_id.slice(0,8)}… · ${r.listing_b_id.slice(0,8)}…</span>
+    </div>
+    <div class="pair-grid">
+      ${renderCol(la)}
+      ${renderCol(lb)}
+    </div>
+    <div class="row">
+      <button class="btn ok"     onclick="dismiss(${r.id})">Not a duplicate</button>
+      <button class="btn danger" onclick="hideOne('${r.listing_a_id}',${r.id})">Hide left</button>
+      <button class="btn danger" onclick="hideOne('${r.listing_b_id}',${r.id})">Hide right</button>
+    </div>
+  </div>`;
+}
+
+async function _resolveReview(reviewId, status) {
+  const { error } = await supa.from('pending_reviews').update({
+    status,
+    decided_at: new Date().toISOString(),
+    decided_by: currentUser?.id,
+  }).eq('id', reviewId);
+  if (error) { showToast('⚠ ' + error.message); return false; }
+  document.getElementById('pair-' + reviewId)?.remove();
+  if (!document.querySelector('.card')) {
+    document.getElementById('reviews').innerHTML = '<div class="empty">No pending reviews 🎉</div>';
+  }
+  return true;
+}
+
+async function dismiss(reviewId) {
+  if (await _resolveReview(reviewId, 'dismissed')) showToast('Dismissed — not a duplicate');
+}
+
+async function hideOne(listingId, reviewId) {
+  const { error } = await adminSetHidden(listingId, true);
+  if (error) { showToast('⚠ Could not hide: ' + error.message); return; }
+  if (await _resolveReview(reviewId, 'resolved')) showToast('Listing hidden');
+}
+</script>
+</body>
+</html>

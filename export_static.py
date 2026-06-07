@@ -115,6 +115,7 @@ def main():
         "privacy.html",
         "contact.html",
         "admin.html",
+        "review.html",
         "stats.html",
         "prefectures.html",
         "prefecture.html",

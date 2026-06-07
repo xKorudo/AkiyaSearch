@@ -12,6 +12,17 @@ from db.database import init_db, upsert
 def run_pipeline():
     init_db()
 
+    # Snapshot existing IDs so we can identify truly new listings afterwards
+    existing_ids = set()
+    try:
+        import sqlite3
+        from db.database import DB as _DB
+        _conn = sqlite3.connect(_DB)
+        existing_ids = {r[0] for r in _conn.execute("SELECT id FROM listings").fetchall()}
+        _conn.close()
+    except Exception:
+        pass
+
     all_listings = []
 
     print("Scraping SUUMO houses...")
@@ -39,6 +50,20 @@ def run_pipeline():
         sync(all_listings)
     except Exception as e:
         print("  Supabase sync error:", type(e).__name__, e)
+
+    # Similarity check: flag cross-source / re-listed duplicates for review
+    new_listings = [l for l in all_listings if l.id and l.id not in existing_ids]
+    print(f"Checking {len(new_listings)} new listing(s) for potential duplicates...")
+    try:
+        from core.similarity import find_pending_reviews
+        from core.sync_supabase import push_pending_reviews
+        pairs = find_pending_reviews(new_listings)
+        if pairs:
+            push_pending_reviews(pairs)
+        else:
+            print("  No potential duplicates found.")
+    except Exception as e:
+        print(f"  Similarity check skipped: {type(e).__name__}: {e}")
 
     print("DONE")
 

@@ -134,3 +134,20 @@ def sync(listings):
         )
 
     print(f"  Supabase sync: {len(rows)} listings, {len(changes)} price changes, {len(sold)} marked sold.")
+
+
+def push_pending_reviews(pairs):
+    """Push (a_id, b_id, score) pairs to the pending_reviews table.
+    Uses ignore-duplicates so re-running never creates double entries."""
+    if not (URL and KEY):
+        return
+    if not pairs:
+        return
+    rows = [{"listing_a_id": a, "listing_b_id": b, "score": s} for a, b, s in pairs]
+    r = requests.post(
+        f"{URL}/rest/v1/pending_reviews",
+        headers=_headers({"Prefer": "resolution=ignore-duplicates,return=minimal"}),
+        data=json.dumps(rows),
+        timeout=30,
+    )
+    print(f"  Queued {len(rows)} potential duplicate pair(s) for review ({r.status_code}).")
