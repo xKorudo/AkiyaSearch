@@ -16,7 +16,7 @@ permissions:
 # Shared group with scrape-and-deploy.yml so the two never run at the same time
 # (they share the same cached DB).
 concurrency:
-  group: akiya-pipeline
+  group: akiya-backfill
   cancel-in-progress: false
 
 jobs:
