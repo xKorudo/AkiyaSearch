@@ -1,0 +1,22 @@
+:root{--bg:#0e0e0e;--surface:#161616;--surface2:#1e1e1e;--surface3:#252525;--border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.14);--text:#e8e8e4;--text2:#9a9a90;--text3:#585850;--accent:#e8a020;--accent2:#f0c060;--blue:#5090f0;--mono:'IBM Plex Mono',monospace;--sans:'Syne',sans-serif;--jp:'Noto Serif JP',serif;--r:6px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);color:var(--text);font-size:15px;line-height:1.6;min-height:100vh;
+  background:radial-gradient(1100px 500px at 50% -10%, rgba(232,160,32,.10), transparent 60%), linear-gradient(170deg,#16161d 0%, #0e0e12 45%, #0b0b0b 100%);background-attachment:fixed;}
+a{color:var(--blue);text-decoration:none;}
+a:hover{text-decoration:underline;}
+header{height:52px;background:var(--surface);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 20px;gap:12px;position:sticky;top:0;z-index:100;}
+.logo{font-size:15px;font-weight:700;color:var(--text);text-decoration:none;}
+.logo span{color:var(--accent);}
+.logo-jp{font-family:var(--jp);font-weight:300;color:var(--text3);font-size:13px;}
+.back{margin-left:auto;font-size:13px;color:var(--text2);}
+.back:hover{color:var(--accent);}
+.wrap{max-width:780px;margin:32px auto 80px;padding:32px 34px 44px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.55);}
+h1{font-size:28px;font-weight:700;margin-bottom:6px;}
+.updated{font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:26px;}
+h2{font-size:16px;font-weight:700;color:var(--accent2);margin:26px 0 8px;}
+p{color:var(--text2);margin-bottom:12px;}
+.fill{background:rgba(232,160,32,.10);border:1px dashed var(--accent);border-radius:4px;padding:1px 6px;color:var(--accent2);font-family:var(--mono);font-size:13px;}
+.note{background:var(--surface2);border-left:3px solid var(--accent);border-radius:4px;padding:12px 14px;font-size:13px;color:var(--text2);margin:16px 0;}
+.links{margin-top:30px;padding-top:18px;border-top:1px solid var(--border);font-size:13px;}
+.links a{margin-right:16px;}
+strong{color:var(--text);}
