@@ -69,10 +69,6 @@ jobs:
       # NOTE: image backfill is its OWN workflow (backfill-images.yml) so it gets
       # a fresh, un-throttled IP each run instead of competing with the scrape.
 
-      - name: Backfill missing translations (catches any that timed out above)
-        run: python backfill_translations.py
-        continue-on-error: true
-
       - name: Build static snapshot
         run: python export_static.py
 
