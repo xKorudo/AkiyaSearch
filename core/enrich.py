@@ -1,3 +1,4 @@
+import threading
 from deep_translator import GoogleTranslator
 
 # Approximate prefecture centroids
@@ -26,29 +27,57 @@ _translator = GoogleTranslator(source='ja', target='en')
 def translate(text: str) -> str:
     if not text or not text.strip():
         return ""
-    # Skip if already mostly ASCII/English
     non_ascii = sum(1 for c in text if ord(c) > 127)
     if non_ascii < 2:
         return text
+    result = [""]
+    def _do():
+        try:
+            result[0] = _translator.translate(text[:500]) or ""
+        except Exception:
+            pass
+    t = threading.Thread(target=_do, daemon=True)
+    t.start()
+    t.join(timeout=10)   # never hang longer than 10s per call
+    return result[0]
+
+
+def _load_existing_translations():
+    """Load id → (title_en, description_en) for already-translated listings."""
     try:
-        result = _translator.translate(text[:500])
-        return result or ""
+        import sqlite3
+        from db.database import DB
+        conn = sqlite3.connect(DB)
+        rows = conn.execute(
+            "SELECT id, title_en, description_en FROM listings "
+            "WHERE title_en IS NOT NULL AND title_en != ''"
+        ).fetchall()
+        conn.close()
+        return {r[0]: (r[1] or "", r[2] or "") for r in rows}
     except Exception:
-        return ""
+        return {}
 
 
 def enrich(listings):
+    existing = _load_existing_translations()
+    skipped = 0
+
     for l in listings:
-        # Coordinates from prefecture
+        # Coordinates from prefecture centroid (scattered so markers don't stack)
         coords = PREF_COORDS.get(l.prefecture)
         if coords:
             import random
-            # Scatter markers slightly so they don't stack
             l.lat = coords[0] + random.uniform(-0.5, 0.5)
             l.lng = coords[1] + random.uniform(-0.5, 0.5)
 
-        # Translate title and description
-        l.title_en = translate(l.title)
-        l.description_en = translate(l.description)
+        # Reuse existing translation — only call the API for truly new listings
+        if l.id in existing:
+            l.title_en, l.description_en = existing[l.id]
+            skipped += 1
+        else:
+            l.title_en = translate(l.title)
+            l.description_en = translate(l.description)
 
+    new_count = len(listings) - skipped
+    print(f"  Translated {new_count} new listings ({skipped} reused from DB).")
     return listings
