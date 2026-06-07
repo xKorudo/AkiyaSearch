@@ -174,7 +174,30 @@ def _fetch_cards(session, url):
     return None  # exhausted retries -> treat as blocked
 
 
-def scrape(max_pages=100):
+DEEP_START = 200   # assumed upper bound for SUUMO pages per prefecture
+
+
+def _probe_last_page(session, params):
+    """Find the actual last SUUMO page for a prefecture by probing forward
+    from a low estimate in steps, then backtracking to the exact boundary."""
+    # Step forward in large jumps until we hit an empty page
+    step, page = 20, 20
+    last_good = 1
+    while page <= DEEP_START:
+        cards = _fetch_cards(session, BASE.format(params, page))
+        if not cards:
+            break
+        last_good = page
+        page += step
+    # Backtrack one-by-one from last_good+step to find the exact last page
+    for p in range(last_good + step - 1, last_good, -1):
+        cards = _fetch_cards(session, BASE.format(params, p))
+        if cards:
+            return p
+    return last_good
+
+
+def scrape(mode="fresh", max_pages=100):
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -195,6 +218,8 @@ def scrape(max_pages=100):
     except Exception:
         pass
 
+    from db.database import get_deep_cursor, set_deep_cursor
+
     results = []
     consecutive_blocked = 0
 
@@ -204,12 +229,22 @@ def scrape(max_pages=100):
     for pref_jp, params in order:
         pref_count = 0
         blocked = False
-        # Early-stop: SUUMO sorts newest-first, so once we see a full page of
-        # already-known listings we've caught up — no new listings lie deeper.
-        # Two consecutive fully-known pages required (handles minor re-orderings).
         zero_new_pages = 0
 
-        for page in range(1, max_pages + 1):
+        if mode == "deep":
+            # Load cursor — where we stopped last time (going backward toward p.1)
+            cursor = get_deep_cursor(pref_jp)
+            if cursor is None:
+                # First deep run: find the actual last SUUMO page for this pref
+                print(f"  deep: probing last page for {pref_jp}…", flush=True)
+                cursor = _probe_last_page(session, params)
+                print(f"  deep: {pref_jp} last page = {cursor}", flush=True)
+            pages_iter = range(cursor, max(cursor - max_pages, 0), -1)  # cursor → 1
+        else:
+            pages_iter = range(1, max_pages + 1)  # 1 → forward
+
+        new_cursor = None
+        for page in pages_iter:
             url = BASE.format(params, page)
             try:
                 cards = _fetch_cards(session, url)
@@ -302,19 +337,22 @@ def scrape(max_pages=100):
                     ))
                     pref_count += 1
 
-                # Early-stop: if every listing on this page is already in the DB,
-                # all deeper pages are known too — no point going further.
-                new_on_page = sum(
-                    1 for c in cards
-                    for a in [c.select_one(".property_unit-title a")]
-                    if a and (("https://suumo.jp" + a.get("href", "")) if a.get("href","").startswith("/") else a.get("href","")) not in existing_urls
-                )
-                if new_on_page == 0:
-                    zero_new_pages += 1
-                    if zero_new_pages >= 2:
-                        break
-                else:
-                    zero_new_pages = 0
+                if mode == "deep":
+                    new_cursor = page  # track the lowest page we've reached
+
+                # Fresh mode early-stop: two consecutive fully-known pages → caught up
+                if mode == "fresh":
+                    new_on_page = sum(
+                        1 for c in cards
+                        for a in [c.select_one(".property_unit-title a")]
+                        if a and (("https://suumo.jp" + a.get("href", "")) if a.get("href", "").startswith("/") else a.get("href", "")) not in existing_urls
+                    )
+                    if new_on_page == 0:
+                        zero_new_pages += 1
+                        if zero_new_pages >= 2:
+                            break
+                    else:
+                        zero_new_pages = 0
 
             except Exception as e:
                 ta = params.split("ta=")[-1]
@@ -323,6 +361,11 @@ def scrape(max_pages=100):
 
         ta = params.split("ta=")[-1]
         print(f"  pref ta={ta}: {pref_count} new", flush=True)
+
+        # Persist deep cursor so next run continues from here
+        if mode == "deep" and new_cursor is not None:
+            # next run: start one page shallower (continue toward page 1)
+            set_deep_cursor(pref_jp, max(new_cursor - 1, 1))
 
         # Early-bail ONLY on real blocks (not on prefectures that are simply
         # exhausted) so we don't keep hammering a blocked IP.

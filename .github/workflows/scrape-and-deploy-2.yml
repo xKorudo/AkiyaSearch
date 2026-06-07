@@ -40,9 +40,10 @@ jobs:
           restore-keys: |
             akiya-db-
 
-      - name: Scrape listings
+      - name: Scrape listings (deep mode — works backward from last SUUMO page)
         run: python run_pipeline.py
         env:
+          SCRAPE_MODE: deep
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 

@@ -1,3 +1,4 @@
+import os
 import sys
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -25,8 +26,9 @@ def run_pipeline():
 
     all_listings = []
 
-    print("Scraping SUUMO houses...")
-    all_listings += homes.scrape()
+    scrape_mode = os.environ.get("SCRAPE_MODE", "fresh")
+    print(f"Scraping SUUMO houses (mode={scrape_mode})...")
+    all_listings += homes.scrape(mode=scrape_mode)
 
     print("Scraping LIFULL Akiya Bank (headless browser)...")
     try:

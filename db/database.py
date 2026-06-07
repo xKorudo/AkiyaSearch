@@ -47,8 +47,45 @@ def init_db():
     except Exception:
         pass  # column already exists
 
+    # Scrape state table (deep-mode cursors etc.)
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS scrape_state (
+        key   TEXT PRIMARY KEY,
+        value TEXT
+    )
+    """)
+
     conn.commit()
     conn.close()
+
+
+def get_deep_cursor(pref: str):
+    """Return the last page processed by the deep scraper for this prefecture.
+    Returns None on first run (no cursor saved yet)."""
+    try:
+        conn = sqlite3.connect(DB)
+        row = conn.execute(
+            "SELECT value FROM scrape_state WHERE key=?",
+            (f"deep_cursor_{pref}",)
+        ).fetchone()
+        conn.close()
+        return int(row[0]) if row else None
+    except Exception:
+        return None
+
+
+def set_deep_cursor(pref: str, page: int):
+    """Persist the deep scraper cursor for this prefecture."""
+    try:
+        conn = sqlite3.connect(DB)
+        conn.execute(
+            "INSERT OR REPLACE INTO scrape_state VALUES (?, ?)",
+            (f"deep_cursor_{pref}", str(page))
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
 
 
 def pref_counts(source=None):
