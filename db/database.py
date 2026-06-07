@@ -30,13 +30,20 @@ def init_db():
         built_year INTEGER,
         condition TEXT,
         images TEXT,
-        traffic TEXT DEFAULT ''
+        traffic TEXT DEFAULT '',
+        first_seen TEXT DEFAULT ''
     )
     """)
 
     # Migration: add traffic column to existing DBs
     try:
         c.execute("ALTER TABLE listings ADD COLUMN traffic TEXT DEFAULT ''")
+    except Exception:
+        pass  # column already exists
+
+    # Migration: add first_seen column to existing DBs
+    try:
+        c.execute("ALTER TABLE listings ADD COLUMN first_seen TEXT DEFAULT ''")
     except Exception:
         pass  # column already exists
 
@@ -199,8 +206,21 @@ def upsert(listing):
     except Exception:
         pass
 
+    # Preserve first_seen — only set it once, on initial insert
+    try:
+        row3 = c.execute("SELECT first_seen FROM listings WHERE id=?", (listing.id,)).fetchone()
+        if row3 and row3[0]:
+            listing.first_seen = row3[0]  # keep the original date
+        elif not listing.first_seen:
+            import datetime
+            listing.first_seen = datetime.date.today().isoformat()
+    except Exception:
+        if not listing.first_seen:
+            import datetime
+            listing.first_seen = datetime.date.today().isoformat()
+
     c.execute("""
-    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
         listing.id,
         listing.title,
@@ -223,6 +243,7 @@ def upsert(listing):
         listing.condition,
         listing.images,
         listing.traffic,
+        listing.first_seen,
     ))
 
     conn.commit()

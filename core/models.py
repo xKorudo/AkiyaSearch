@@ -24,3 +24,5 @@ class Listing:
     condition: str = ""
     images: str = ""   # JSON array of image URLs
     traffic: str = ""  # nearest transit lines (交通)
+    first_seen: str = ""  # ISO date when first scraped (YYYY-MM-DD)
+

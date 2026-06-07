@@ -920,6 +920,17 @@ function fmtJPY(jpy) {
   return `<span class="lcard-price-jpy">${fmtYen(jpy)}</span>${conv}`;
 }
 
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso), now = new Date();
+  const days = Math.round((now - d) / 86400000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days}d ago`;
+  if (days < 31) return `${Math.round(days/7)}w ago`;
+  return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+}
+
 // ── CARD HTML ─────────────────────────────────────────────────────────────────
 function cardHTML(l) {
   const ab = calcAirbnb(l);
@@ -969,7 +980,7 @@ function cardHTML(l) {
       </div>
     </div>
     <div class="lcard-footer">
-      <div class="lcard-tags">${viewCount(l.id) ? `<span class="ltag" title="Times viewed">👁 ${viewCount(l.id)}</span>` : ''}${tags}</div>
+      <div class="lcard-tags">${viewCount(l.id) ? `<span class="ltag" title="Times viewed">👁 ${viewCount(l.id)}</span>` : ''}${tags}${l.first_seen ? `<span class="ltag ltag-date" title="First scraped">📅 ${fmtDate(l.first_seen)}</span>` : ''}</div>
       <span class="lcard-link" onclick="event.stopPropagation();event.preventDefault();track('source_click',{id:'${l.id}'});window.open('${l.source_url}','_blank')">Source →</span>
     </div>
   </a>`;

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — Akiya Search</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://wmevbetyxqhtprdahxqh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtZXZiZXR5eHFodHByZGFoeHFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzAyOTcsImV4cCI6MjA5NjE0NjI5N30.jd5TDcGI0dlSpypjuoPtdOuqhBhkf_ouX5MMg4oSfSI";
+</script>
+<style>
+:root {
+  --bg: #0e0e0e; --surface: #161616; --surface2: #1e1e1e; --surface3: #252525;
+  --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.14);
+  --text: #e8e8e4; --text2: #9a9a90; --text3: #585850;
+  --accent: #e8a020; --accent2: #f0c060; --green: #3ecf8e; --red: #f05050;
+  --mono: 'IBM Plex Mono', monospace; --sans: 'Syne', sans-serif;
+  --r: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; display: flex; flex-direction: column; }
+header { height: 52px; background: var(--surface); border-bottom: 1px solid var(--border2); display: flex; align-items: center; padding: 0 20px; gap: 16px; flex-shrink: 0; }
+.logo { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); display: flex; align-items: center; gap: 8px; white-space: nowrap; text-decoration: none; }
+.logo span { color: var(--accent); }
+.logo-jp { font-family: 'Noto Serif JP', serif; font-weight: 300; font-size: 13px; color: var(--text3); }
+.back { margin-left: auto; font-size: 12px; color: var(--text2); text-decoration: none; font-family: var(--mono); }
+.back:hover { color: var(--accent); }
+
+.wrap { max-width: 680px; margin: 0 auto; padding: 48px 24px 80px; width: 100%; }
+h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; }
+.subtitle { font-size: 13px; color: var(--text2); margin-bottom: 40px; line-height: 1.6; }
+
+.type-tabs { display: flex; gap: 8px; margin-bottom: 32px; }
+.type-tab { flex: 1; padding: 14px 16px; border: 1px solid var(--border2); border-radius: var(--r); background: var(--surface2); cursor: pointer; text-align: left; transition: all .15s; }
+.type-tab:hover { border-color: var(--accent); }
+.type-tab.active { border-color: var(--accent); background: rgba(232,160,32,.08); }
+.type-tab-icon { font-size: 20px; margin-bottom: 6px; display: block; }
+.type-tab-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.type-tab-desc { font-size: 11px; color: var(--text3); line-height: 1.4; }
+
+.form-group { margin-bottom: 20px; }
+label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 7px; }
+input[type=text], input[type=email], textarea, select {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r);
+  padding: 10px 12px; font-family: var(--sans); font-size: 13px; color: var(--text); outline: none;
+  transition: border-color .15s;
+}
+input[type=text]:focus, input[type=email]:focus, textarea:focus, select:focus { border-color: var(--accent); }
+input[type=text]::placeholder, input[type=email]::placeholder, textarea::placeholder { color: var(--text3); }
+textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
+select option { background: var(--surface2); }
+
+.url-hint { font-size: 11px; color: var(--text3); margin-top: 6px; font-family: var(--mono); }
+
+.submit-btn { width: 100%; padding: 13px; background: var(--accent); color: #000; border: none; border-radius: var(--r); font-family: var(--sans); font-size: 13px; font-weight: 700; cursor: pointer; letter-spacing: .04em; transition: opacity .15s; margin-top: 8px; }
+.submit-btn:hover { opacity: .85; }
+.submit-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.success-msg { display: none; background: rgba(62,207,142,.08); border: 1px solid var(--green); border-radius: var(--r); padding: 20px; text-align: center; margin-top: 24px; }
+.success-msg .s-icon { font-size: 32px; margin-bottom: 10px; }
+.success-msg h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.success-msg p { font-size: 13px; color: var(--text2); }
+
+.error-msg { display: none; background: rgba(240,80,80,.08); border: 1px solid var(--red); border-radius: var(--r); padding: 12px 16px; font-size: 13px; color: var(--red); margin-top: 16px; }
+
+.links { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); display: flex; gap: 20px; }
+.links a { font-size: 12px; color: var(--text3); text-decoration: none; font-family: var(--mono); }
+.links a:hover { color: var(--accent); }
+
+@media (max-width: 600px) {
+  .type-tabs { flex-direction: column; }
+  .wrap { padding: 32px 16px 60px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="./">🏚 <span>Akiya</span> Search <span class="logo-jp">空き家</span></a>
+  <a class="back" href="./">← Home</a>
+</header>
+
+<div class="wrap">
+  <h1>Contact</h1>
+  <p class="subtitle">Questions, listing removal requests, or general feedback — we read every message.</p>
+
+  <div class="type-tabs">
+    <button class="type-tab active" onclick="setType('remove', this)">
+      <span class="type-tab-icon">🗑</span>
+      <div class="type-tab-title">Remove a listing</div>
+      <div class="type-tab-desc">Sold, duplicate, wrong data, or privacy concern</div>
+    </button>
+    <button class="type-tab" onclick="setType('general', this)">
+      <span class="type-tab-icon">💬</span>
+      <div class="type-tab-title">General inquiry</div>
+      <div class="type-tab-desc">Feedback, partnerships, or anything else</div>
+    </button>
+  </div>
+
+  <form id="contact-form" onsubmit="submitForm(event)">
+    <div class="form-group">
+      <label>Your name</label>
+      <input type="text" id="f-name" placeholder="Full name" required autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label>Your email</label>
+      <input type="email" id="f-email" placeholder="you@example.com" required autocomplete="email">
+    </div>
+    <div class="form-group" id="url-group">
+      <label>Listing URL <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px">(paste the URL from our site or the original source)</span></label>
+      <input type="text" id="f-url" placeholder="https://akiya-finder-159.pages.dev/listing.html?id=…" autocomplete="off">
+      <div class="url-hint" id="url-hint"></div>
+    </div>
+    <div class="form-group">
+      <label>Message</label>
+      <textarea id="f-message" placeholder="Describe your request…" required></textarea>
+    </div>
+    <input type="hidden" id="f-type" value="remove">
+    <button class="submit-btn" type="submit" id="submit-btn">Send message</button>
+  </form>
+
+  <div class="success-msg" id="success-msg">
+    <div class="s-icon">✅</div>
+    <h3>Message sent!</h3>
+    <p>We'll get back to you within a few days. Listing removal requests are usually processed within 24 hours.</p>
+  </div>
+  <div class="error-msg" id="error-msg"></div>
+
+  <div class="links">
+    <a href="./">Home</a>
+    <a href="./search.html">Browse listings</a>
+    <a href="./privacy.html">Privacy</a>
+    <a href="./impressum.html">Impressum</a>
+  </div>
+</div>
+
+<script>
+let contactType = 'remove';
+
+function setType(type, el) {
+  contactType = type;
+  document.getElementById('f-type').value = type;
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const urlGroup = document.getElementById('url-group');
+  urlGroup.style.display = type === 'remove' ? '' : 'none';
+  document.getElementById('f-message').placeholder = type === 'remove'
+    ? 'Please describe the issue (sold, duplicate, wrong data, privacy concern…)'
+    : 'Describe your question or feedback…';
+}
+
+// Pre-fill URL from query param ?url=... (linked from listing pages)
+const urlParam = new URLSearchParams(location.search).get('url');
+if (urlParam) {
+  document.getElementById('f-url').value = decodeURIComponent(urlParam);
+  document.getElementById('url-hint').textContent = '✓ Listing URL prefilled from the page you came from';
+}
+
+async function submitForm(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  const payload = {
+    type: contactType,
+    name: document.getElementById('f-name').value.trim(),
+    email: document.getElementById('f-email').value.trim(),
+    listing_url: document.getElementById('f-url').value.trim() || null,
+    message: document.getElementById('f-message').value.trim(),
+    submitted_at: new Date().toISOString(),
+  };
+
+  let ok = false;
+
+  // Try Supabase insert
+  try {
+    const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { error } = await supa.from('contact_requests').insert([payload]);
+    if (!error) ok = true;
+  } catch (_) {}
+
+  // Fallback: mailto link
+  if (!ok) {
+    const subject = encodeURIComponent(contactType === 'remove' ? 'Listing removal request' : 'General inquiry');
+    const body = encodeURIComponent(
+      `Name: ${payload.name}\nEmail: ${payload.email}\n` +
+      (payload.listing_url ? `Listing URL: ${payload.listing_url}\n` : '') +
+      `\n${payload.message}`
+    );
+    window.location.href = `mailto:contact@akiya-finder.com?subject=${subject}&body=${body}`;
+    ok = true;
+  }
+
+  if (ok) {
+    document.getElementById('contact-form').style.display = 'none';
+    document.getElementById('success-msg').style.display = 'block';
+  } else {
+    const err = document.getElementById('error-msg');
+    err.style.display = 'block';
+    err.textContent = 'Something went wrong. Please try again or email us directly.';
+    btn.disabled = false;
+    btn.textContent = 'Send message';
+  }
+}
+</script>
+</body>
+</html>

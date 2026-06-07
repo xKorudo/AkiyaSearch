@@ -48,7 +48,7 @@ select:focus { border-color: var(--accent); }
 .sidebar { width: 100%; background: var(--surface); display: flex; flex-direction: column; }
 .sidebar-header { padding: 16px max(32px, calc((100% - 1560px) / 2 + 32px)) 4px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 .sidebar-title { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--text3); text-transform: uppercase; }
-.listings-list { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-auto-rows: max-content; align-items: start; align-content: start; gap: 20px; padding: 22px 32px; width: 100%; max-width: 1560px; margin: 0 auto; }
+.listings-list { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); grid-auto-rows: max-content; align-items: start; align-content: start; gap: 20px; padding: 22px max(32px, calc((100% - 1560px) / 2 + 32px)); width: 100%; }
 .listings-list::-webkit-scrollbar { width: 4px; }
 .listings-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 .lcard { display: flex; flex-direction: column; text-decoration: none; color: inherit; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface2); cursor: pointer; transition: background .1s; align-self: start; min-height: 482px; }
@@ -86,6 +86,7 @@ select:focus { border-color: var(--accent); }
 .lcard-footer { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px 10px; }
 .lcard-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 .ltag { font-size: 9px; color: var(--text3); background: var(--surface3); padding: 2px 6px; border-radius: 3px; }
+.ltag-date { color: var(--text3); opacity: .7; }
 .lcard-link { font-family: var(--mono); font-size: 9px; color: var(--blue); text-decoration: none; }
 .lcard-link:hover { color: var(--accent); }
 .fav-btn { position: absolute; bottom: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.6); border: 1px solid var(--border2); color: #fff; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; z-index: 3; }

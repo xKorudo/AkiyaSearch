@@ -4,6 +4,7 @@ Uses the JJ012FC001 results endpoint which returns proper static HTML.
 """
 import requests
 from bs4 import BeautifulSoup
+import datetime
 import random
 import time
 import re
@@ -305,6 +306,7 @@ def scrape(max_pages=3):
                         condition="",
                         images=json.dumps(all_imgs),
                         traffic=final_traffic,
+                        first_seen=datetime.date.today().isoformat(),
                     ))
                     pref_count += 1
 
