@@ -838,28 +838,56 @@ async function fetchFXRates() {
 }
 
 // ── DATA LOADING ──────────────────────────────────────────────────────────────
+function _applyListings(listings) {
+  ALL = listings.filter(l => l.source !== 'AKIYA BANK');
+  ALL.forEach(l => { if (l.price_jpy != null && l.price_jpy > 0 && l.price_jpy < 10000) l.price_jpy = null; });
+}
+
 async function loadListings() {
   setLoading(true);
-  // Try the live Flask API first (local dev); fall back to the static snapshot
-  // (Cloudflare Pages); finally fall back to bundled demo data.
-  for (const src of ['/api/listings', './listings.json']) {
-    try {
-      const r = await fetch(src);
-      if (!r.ok) continue;
+
+  // 1. Live Flask API (local dev)
+  try {
+    const r = await fetch('/api/listings');
+    if (r.ok) {
       const d = await r.json();
-      // Drop the legacy "AKIYA BANK" source — it scraped portal nav links, not houses
-      ALL = (d.listings || []).filter(l => l.source !== 'AKIYA BANK');
-      // A sub-¥10,000 price is a parse artifact (e.g. ¥200) → show "price on request"
-      ALL.forEach(l => { if (l.price_jpy != null && l.price_jpy > 0 && l.price_jpy < 10000) l.price_jpy = null; });
-      await applyListingOverrides();   // admin hides/edits, applied over the scraped data
+      _applyListings(d.listings || []);
+      await applyListingOverrides();
       if (typeof populateSources === 'function') populateSources();
       setLoading(false);
       if (typeof onDataLoaded === 'function') onDataLoaded();
       else if (typeof filter === 'function') filter();
       if (typeof openDeepLink === 'function') openDeepLink();
       return;
-    } catch { /* try next source */ }
-  }
+    }
+  } catch { /* fall through */ }
+
+  // 2. Chunked static files (Cloudflare Pages)
+  try {
+    const r0 = await fetch('./listings-0.json');
+    if (r0.ok) {
+      const d0 = await r0.json();
+      const nChunks = d0.chunks || 1;
+      let all = d0.listings || [];
+      if (nChunks > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: nChunks - 1 }, (_, i) =>
+            fetch(`./listings-${i + 1}.json`).then(r => r.json()).then(d => d.listings || [])
+          )
+        );
+        rest.forEach(chunk => { all = all.concat(chunk); });
+      }
+      _applyListings(all);
+      await applyListingOverrides();
+      if (typeof populateSources === 'function') populateSources();
+      setLoading(false);
+      if (typeof onDataLoaded === 'function') onDataLoaded();
+      else if (typeof filter === 'function') filter();
+      if (typeof openDeepLink === 'function') openDeepLink();
+      return;
+    }
+  } catch { /* fall through */ }
+
   ALL = DEMO_DATA;
   showToast('⚠ No data source — showing demo data');
   setLoading(false);

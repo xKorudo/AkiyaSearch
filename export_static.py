@@ -19,7 +19,8 @@ import sqlite3
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(ROOT, "akiya_v4.db")
 OUT = os.path.join(ROOT, "public")
-LIVE_URL = "https://akiya-finder-159.pages.dev/listings.json"
+LIVE_URL = "https://akiya-finder-159.pages.dev/listings-0.json"
+CHUNK_SIZE = 10_000  # listings per file — keeps each chunk well under CF's 25 MiB limit
 
 COLUMNS = [
     "id", "title", "prefecture", "city", "price_jpy", "price_label",
@@ -46,8 +47,6 @@ def main():
             d["images"] = []
         listings.append(d)
 
-    payload = {"count": len(listings), "listings": listings}
-
     # Never shrink the live dataset: the GitHub Actions runs accumulate far more
     # listings than this local DB. If the live site already has more, keep those
     # so a local frontend-only deploy doesn't clobber the bigger dataset.
@@ -56,15 +55,30 @@ def main():
         try:
             import urllib.request
             req = urllib.request.Request(LIVE_URL, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
-            live = json.load(urllib.request.urlopen(req, timeout=25))
-            if live.get("count", 0) > len(listings):
-                print(f"Live site has {live['count']} listings (> local {len(listings)}) — keeping live data to avoid shrinking.")
-                payload = live
+            live0 = json.load(urllib.request.urlopen(req, timeout=25))
+            if live0.get("count", 0) > len(listings):
+                live_count = live0["count"]
+                live_chunks = live0.get("chunks", 1)
+                print(f"Live site has {live_count} listings (> local {len(listings)}) — keeping live data.")
+                # Reconstruct listings from all live chunks
+                listings = list(live0.get("listings", []))
+                for i in range(1, live_chunks):
+                    chunk_url = LIVE_URL.replace("listings-0.json", f"listings-{i}.json")
+                    req_i = urllib.request.Request(chunk_url, headers={"User-Agent": "Mozilla/5.0"})
+                    listings += json.load(urllib.request.urlopen(req_i, timeout=25)).get("listings", [])
         except Exception as e:
             print("  (could not check live dataset:", type(e).__name__, "— using local)")
 
-    with open(os.path.join(OUT, "listings.json"), "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False)
+    # Write chunks — each under CHUNK_SIZE listings so no file exceeds CF's 25 MiB limit
+    chunks = [listings[i:i + CHUNK_SIZE] for i in range(0, max(len(listings), 1), CHUNK_SIZE)]
+    n = len(chunks)
+    for idx, chunk in enumerate(chunks):
+        data = {"listings": chunk}
+        if idx == 0:
+            data["count"] = len(listings)
+            data["chunks"] = n
+        with open(os.path.join(OUT, f"listings-{idx}.json"), "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
 
     static_files = [
         "index.html",
@@ -93,7 +107,7 @@ def main():
             for fname in os.listdir(src_dir):
                 shutil.copyfile(os.path.join(src_dir, fname), os.path.join(dst_dir, fname))
 
-    print(f"Wrote {payload['count']} listings to {OUT}/listings.json")
+    print(f"Wrote {len(listings)} listings across {n} chunk(s) to {OUT}/listings-*.json")
     print("Copied HTML pages and assets to", OUT)
     print("Static site ready in ./public  — deploy that folder to Cloudflare Pages.")
 

@@ -225,7 +225,8 @@ async function init(){
   try{const r=await fetch('https://api.exchangerate-api.com/v4/latest/JPY');const d=await r.json();if(d&&d.rates){FX.EUR=d.rates.EUR;FX.USD=d.rates.USD;FX.GBP=d.rates.GBP;FX.AUD=d.rates.AUD;}}catch{}
   const id=new URLSearchParams(location.search).get('id');
   let listings=[];
-  for(const src of ['listings.json','/api/listings']){try{const r=await fetch(src);if(!r.ok)continue;listings=((await r.json()).listings||[]).filter(x=>x.source!=='AKIYA BANK');if(listings.length)break;}catch{}}
+  try{const r=await fetch('/api/listings');if(r.ok){listings=((await r.json()).listings||[]).filter(x=>x.source!=='AKIYA BANK');}}catch{}
+  if(!listings.length){try{const r0=await fetch('listings-0.json');if(r0.ok){const d0=await r0.json();const n=d0.chunks||1;let all=d0.listings||[];if(n>1){const rest=await Promise.all(Array.from({length:n-1},(_,i)=>fetch(`listings-${i+1}.json`).then(r=>r.json()).then(d=>d.listings||[])));rest.forEach(c=>{all=all.concat(c);});}listings=all.filter(x=>x.source!=='AKIYA BANK');}}catch{}}
   listings.forEach(l=>{if(l.price_jpy!=null&&l.price_jpy>0&&l.price_jpy<10000)l.price_jpy=null;});
   const l=listings.find(x=>x.id===id);
   const wrap=document.getElementById('wrap');
