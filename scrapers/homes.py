@@ -174,7 +174,7 @@ def _fetch_cards(session, url):
     return None  # exhausted retries -> treat as blocked
 
 
-def scrape(max_pages=3):
+def scrape(max_pages=100):
     session = requests.Session()
     session.headers.update({
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -198,26 +198,18 @@ def scrape(max_pages=3):
     results = []
     consecutive_blocked = 0
 
-    counts = _pref_counts()
-    # Shuffle randomly each run so all prefectures rotate evenly rather than
-    # always fixing on the smallest one.
     order = list(PREFECTURES)
     random.shuffle(order)
 
     for pref_jp, params in order:
         pref_count = 0
         blocked = False
-        # Always start from page 1: SUUMO sorts newest-first, so fresh listings
-        # appear at the top regardless of how many we've stored. Jumping to a
-        # deeper page skips new content entirely. Deduplication at insert time
-        # discards already-known listings without wasting a DB write.
-        #
-        # Also try pages beyond our current coverage depth so the DB keeps
-        # growing even when pages 1-N are fully known.
-        fresh_pages = range(1, max_pages + 1)
-        known_depth = counts.get(pref_jp, 0) // 30 + 1
-        deep_pages = range(known_depth, known_depth + max_pages) if known_depth > max_pages else range(0)
-        for page in sorted(set(fresh_pages) | set(deep_pages)):
+        # Early-stop: SUUMO sorts newest-first, so once we see a full page of
+        # already-known listings we've caught up — no new listings lie deeper.
+        # Two consecutive fully-known pages required (handles minor re-orderings).
+        zero_new_pages = 0
+
+        for page in range(1, max_pages + 1):
             url = BASE.format(params, page)
             try:
                 cards = _fetch_cards(session, url)
@@ -309,6 +301,20 @@ def scrape(max_pages=3):
                         first_seen=datetime.date.today().isoformat(),
                     ))
                     pref_count += 1
+
+                # Early-stop: if every listing on this page is already in the DB,
+                # all deeper pages are known too — no point going further.
+                new_on_page = sum(
+                    1 for c in cards
+                    for a in [c.select_one(".property_unit-title a")]
+                    if a and (("https://suumo.jp" + a.get("href", "")) if a.get("href","").startswith("/") else a.get("href","")) not in existing_urls
+                )
+                if new_on_page == 0:
+                    zero_new_pages += 1
+                    if zero_new_pages >= 2:
+                        break
+                else:
+                    zero_new_pages = 0
 
             except Exception as e:
                 ta = params.split("ta=")[-1]
