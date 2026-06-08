@@ -244,6 +244,18 @@ function setCurrency(c) {
   if (selectedId) openDetail(selectedId);              // refresh open detail panel
 }
 
+// Re-render the view that's currently shown after account data loads. Likes and
+// Watchlists share the same container, so we must only refresh the active one
+// (otherwise renderWatchlists would clobber the Likes view, and vice-versa).
+function refreshActiveView() {
+  const sec = (typeof activeSection !== 'undefined') ? activeSection : null;
+  if (sec === 'watchlists') { if (typeof renderWatchlists === 'function') renderWatchlists(); return; }
+  if (sec === 'likes')      { if (typeof renderLikes === 'function') renderLikes(); return; }
+  // search / saved / map / discover etc.
+  if (typeof filter === 'function') filter();
+  else if (typeof renderList === 'function') renderList();
+}
+
 // ── AUTH + FAVORITES ──────────────────────────────────────────────────────────
 async function initAuth() {
   // Favorites are account-only (never persisted on the device) — start empty.
@@ -263,9 +275,8 @@ async function initAuth() {
       await loadCloudFavs();
       await loadWatchlistData(); await loadNotifs(); await loadSwipes();
       // Existing session restores as INITIAL_SESSION (not SIGNED_IN), so refresh
-      // any account-only views now that the data has loaded.
-      if (typeof renderWatchlists === 'function') renderWatchlists();
-      if (typeof filter === 'function') filter();
+      // whatever account-only view is currently shown (likes/watchlists/saved).
+      refreshActiveView();
     }
     supa.auth.onAuthStateChange(async (event, session) => {
       currentUser = session ? session.user : null;
@@ -279,7 +290,7 @@ async function initAuth() {
         checkAdmin();
         await loadCloudFavs();
         await loadWatchlistData(); await loadNotifs(); await loadSwipes();
-        renderWatchlists();
+        refreshActiveView();
         await handleJoinLink();
       } else if (!newId && _lastUserId) {
         _lastUserId = null; isAdminUser = false; updateAdminUI();
