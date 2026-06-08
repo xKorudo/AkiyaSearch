@@ -44,7 +44,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 <div class="toolbar">
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
-    <input type="text" id="q" placeholder="Search city, region, keyword…" oninput="filter()">
+    <input type="search" id="q" name="akiya-search" placeholder="Search city, region, keyword…" oninput="filter()" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other">
   </div>
   <select id="pref-select" onchange="filter()">
     <option value="">All Prefectures</option>

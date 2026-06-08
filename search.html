@@ -44,7 +44,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 <div class="toolbar">
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
-    <input type="text" id="q" placeholder="Search city, region, keyword…" oninput="filter()" autocomplete="off">
+    <input type="search" id="q" name="akiya-search" placeholder="Search city, region, keyword…" oninput="filter()" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-form-type="other">
   </div>
   <button class="hbtn" id="filters-toggle" onclick="toggleFilters()">⚙ Filters<span id="active-filters" class="nav-badge" style="display:none;margin-left:6px">0</span></button>
   <button class="hbtn" id="clear-filters" onclick="clearFilters()" style="display:none">✕ Clear</button>
