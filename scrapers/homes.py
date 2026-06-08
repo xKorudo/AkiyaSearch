@@ -16,10 +16,11 @@ import os
 #                        working BACKWARD from the cursor. The cursor is saved at
 #                        the last (lowest) page reached, so the next run re-scrapes
 #                        that page (overlap, catches shifted listings) and continues.
-#                        e.g. cursor 121 -> 121,120,119 ; next run 119,118,117 …
+#                        e.g. cursor 121 -> 121..116 ; next run 116..111 … (~30
+#                        listings/page, so 6 pages ≈ 180 listings/prefecture/run).
 #   SCRAPE_TIME_BUDGET — overall seconds before the whole scrape stops, so the
 #                        job finishes (build + deploy) well under GitHub's 6h cap.
-DEEP_PAGES_PER_RUN = int(os.environ.get("DEEP_PAGES_PER_RUN", "3"))
+DEEP_PAGES_PER_RUN = int(os.environ.get("DEEP_PAGES_PER_RUN", "6"))
 SCRAPE_TIME_BUDGET = int(os.environ.get("SCRAPE_TIME_BUDGET", str(int(4.5 * 3600))))
 
 from core.models import Listing
