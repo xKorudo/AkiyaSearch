@@ -208,11 +208,19 @@ async function fetchTopViews() {
 
 async function loadLanding() {
   try {
-    const r = await fetch('./listings.json');
-    if (!r.ok) return;
-    const d = await r.json();
-    const listings = (d.listings || []).filter(l => l.source !== 'AKIYA BANK');
-    document.getElementById('stat-count').textContent = listings.length.toLocaleString();
+    // Use the same chunked source as Search: listings-0.json carries the true
+    // total `count`; load all chunks for the sample/prefecture/hot sections.
+    const r0 = await fetch('./listings-0.json');
+    if (!r0.ok) return;
+    const d0 = await r0.json();
+    const total = d0.count != null ? d0.count : (d0.listings || []).length;
+    let all = (d0.listings || []);
+    const nChunks = d0.chunks || 1;
+    for (let i = 1; i < nChunks; i++) {
+      try { const ri = await fetch(`./listings-${i}.json`); if (ri.ok) all = all.concat((await ri.json()).listings || []); } catch {}
+    }
+    const listings = all.filter(l => l.source !== 'AKIYA BANK');
+    document.getElementById('stat-count').textContent = total.toLocaleString();
 
     renderTopPrefectures(listings);   // top prefectures by akiya count (with outline icons)
 
