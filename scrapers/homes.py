@@ -12,11 +12,14 @@ import json
 import os
 
 # Deep-mode run limits (overridable via env in CI):
-#   DEEP_PER_PREF      — max NEW listings to grab per prefecture per run (then
-#                        move on; the deep cursor resumes here next run).
+#   DEEP_PAGES_PER_RUN — how many SUUMO pages to scrape per prefecture per run,
+#                        working BACKWARD from the cursor. The cursor is saved at
+#                        the last (lowest) page reached, so the next run re-scrapes
+#                        that page (overlap, catches shifted listings) and continues.
+#                        e.g. cursor 121 -> 121,120,119 ; next run 119,118,117 …
 #   SCRAPE_TIME_BUDGET — overall seconds before the whole scrape stops, so the
 #                        job finishes (build + deploy) well under GitHub's 6h cap.
-DEEP_PER_PREF = int(os.environ.get("DEEP_PER_PREF", "180"))
+DEEP_PAGES_PER_RUN = int(os.environ.get("DEEP_PAGES_PER_RUN", "3"))
 SCRAPE_TIME_BUDGET = int(os.environ.get("SCRAPE_TIME_BUDGET", str(int(4.5 * 3600))))
 
 from core.models import Listing
@@ -256,7 +259,9 @@ def scrape(mode="fresh", max_pages=100):
                 print(f"  deep: probing last page for {pref_jp}…", flush=True)
                 cursor = _probe_last_page(session, params)
                 print(f"  deep: {pref_jp} last page = {cursor}", flush=True)
-            pages_iter = range(cursor, max(cursor - max_pages, 0), -1)  # cursor → 1
+            # Scrape DEEP_PAGES_PER_RUN pages backward from the cursor (incl. the
+            # cursor page itself as the overlap with last run).
+            pages_iter = range(cursor, max(cursor - DEEP_PAGES_PER_RUN, 0), -1)
         else:
             pages_iter = range(1, max_pages + 1)  # 1 → forward
 
@@ -355,11 +360,7 @@ def scrape(mode="fresh", max_pages=100):
                     pref_count += 1
 
                 if mode == "deep":
-                    new_cursor = page  # track the lowest page we've reached
-                    # Per-prefecture cap: grab ~DEEP_PER_PREF new listings, then
-                    # move on. The cursor (above) resumes here on the next run.
-                    if pref_count >= DEEP_PER_PREF:
-                        break
+                    new_cursor = page  # lowest page reached → next run resumes here (overlap)
                     # Respect the overall time budget mid-prefecture too.
                     if time.monotonic() - start > SCRAPE_TIME_BUDGET:
                         time_up = True
