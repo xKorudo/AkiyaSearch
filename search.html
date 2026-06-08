@@ -23,6 +23,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     <a class="nav-link" href="./index.html">🏠 Home</a>
     <a class="nav-link active" id="nav-search" onclick="setSection('search');return false;" href="#">🔍 Search</a>
     <a class="nav-link" id="nav-saved" onclick="setSection('saved');return false;" href="#">♡ Saved <span id="fav-count" class="nav-badge">0</span></a>
+    <a class="nav-link" id="nav-likes" onclick="setSection('likes');return false;" href="#">💚 Likes <span id="like-count" class="nav-badge">0</span></a>
     <a class="nav-link" id="nav-watchlists" onclick="setSection('watchlists');return false;" href="#">👁 Watchlists</a>
     <a class="nav-link" href="./map.html">🗺 Map</a>
     <a class="nav-link" href="./discover.html">✨ Discover</a>
@@ -205,7 +206,9 @@ let activeSection = 'search';
 
 function onDataLoaded() {
   populateSources();
-  filter();
+  if (activeSection === 'likes') renderLikes();
+  else if (activeSection === 'watchlists') renderWatchlists();
+  else filter();
   openDeepLink();
 }
 
@@ -297,14 +300,42 @@ function renderList(append) {
 
 function setSection(s) {
   activeSection = s;
-  ['search','saved','watchlists'].forEach(id => document.getElementById('nav-'+id)?.classList.remove('active'));
+  ['search','saved','likes','watchlists'].forEach(id => document.getElementById('nav-'+id)?.classList.remove('active'));
   document.getElementById('nav-'+s)?.classList.add('active');
   favView = (s === 'saved');
   const main = document.getElementById('main');
   if (main) main.className = 'main section-' + s;
   closeMobileNav();
   if (s === 'watchlists') renderWatchlists();
+  else if (s === 'likes') renderLikes();
   else filter();
+}
+
+// Likes = Discover 👍 swipes, kept separate from favorites. The user can sync
+// them to favorites individually (the heart on each card) or all at once.
+function renderLikes() {
+  const el = document.getElementById('watch-view');
+  if (!el) return;
+  if (!currentUser) {
+    el.innerHTML = `<div class="watch-empty"><div class="empty-jp" style="font-size:48px">💚</div>
+      <p style="margin:12px 0">Sign in, then swipe 👍 in Discover — your likes collect here, separate from favorites.</p>
+      <button class="auth-submit" style="max-width:200px;margin:0 auto" onclick="openAuth()">Sign in</button></div>`;
+    return;
+  }
+  const liked = likedIds().map(id => ALL.find(l => l.id === id)).filter(Boolean);
+  if (!liked.length) {
+    el.innerHTML = `<div class="watch-empty"><div class="empty-jp" style="font-size:48px">💚</div>
+      <p style="margin:12px 0">No likes yet. Swipe 👍 in <a href="./discover.html" style="color:var(--accent)">Discover</a> to collect houses here.</p></div>`;
+    return;
+  }
+  const notInFav = liked.filter(l => !FAVS.has(l.id)).length;
+  el.innerHTML = `
+    <div class="likes-head">
+      <div><h3>💚 Your likes <span class="muted">${liked.length}</span></h3>
+        <div class="muted">Separate from favorites. Tap a heart to save one, or sync them all.</div></div>
+      <button class="hbtn ${notInFav?'active':''}" onclick="syncAllLikesToFavs()" ${notInFav?'':'disabled style="opacity:.5"'}>♥ Add all to favorites${notInFav?` (${notInFav})`:''}</button>
+    </div>
+    <div class="likes-grid">${liked.map(cardHTML).join('')}</div>`;
 }
 
 function toggleFilters() {
@@ -372,11 +403,11 @@ window.addEventListener('DOMContentLoaded', () => {
     if (sel) sel.value = pref;
   }
   const h = (location.hash || '').replace('#','');
-  setSection(['saved','watchlists'].includes(h) ? h : 'search');
+  setSection(['saved','likes','watchlists'].includes(h) ? h : 'search');
 });
 window.addEventListener('hashchange', () => {
   const h = (location.hash || '').replace('#','');
-  if (['search','saved','watchlists'].includes(h)) setSection(h);
+  if (['search','saved','likes','watchlists'].includes(h)) setSection(h);
 });
 </script>
 </body>

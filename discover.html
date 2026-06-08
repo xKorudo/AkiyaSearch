@@ -21,9 +21,11 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     <a class="nav-link" href="./index.html">🏠 Home</a>
     <a class="nav-link" href="./search.html">🔍 Search</a>
     <a class="nav-link" href="./search.html#saved">♡ Saved <span id="fav-count" class="nav-badge">0</span></a>
+    <a class="nav-link" href="./search.html#likes">💚 Likes <span id="like-count" class="nav-badge">0</span></a>
     <a class="nav-link" href="./search.html#watchlists">👁 Watchlists</a>
     <a class="nav-link" href="./map.html">🗺 Map</a>
     <a class="nav-link active" href="./discover.html">✨ Discover</a>
+    <a class="nav-link admin-only" href="./admin.html" style="display:none;color:var(--accent)">🛠 Admin</a>
   </nav>
   <div class="header-right">
     <button class="hbtn" id="notif-btn" onclick="toggleNotifs()" title="Notifications" style="position:relative">🔔<span id="notif-badge" class="notif-badge" style="display:none">0</span></button>
@@ -272,8 +274,8 @@ function renderDiscover(keepCurrent) {
   const total = Object.keys(SWIPES).length;
   const likeCount = Object.keys(SWIPES).filter(k => SWIPES[k]).length;
   el.innerHTML = `<div class="disco-progress" style="margin-bottom:12px">
-      <span>${total ? total + ' rated' : 'Swipe to teach it your taste'} · 👍 likes are saved to your <a href="./search.html#saved" style="color:var(--accent);text-decoration:none">Favorites</a></span>
-      <a class="aspect-toggle" href="./search.html#saved" title="See the houses you liked">♥ My likes${likeCount ? ' · ' + likeCount : ''}</a>
+      <span>${total ? total + ' rated' : 'Swipe to teach it your taste'} · 👍 collects in your <a href="./search.html#likes" style="color:var(--accent);text-decoration:none">Likes</a></span>
+      <a class="aspect-toggle" href="./search.html#likes" title="See the houses you liked">💚 My likes${likeCount ? ' · ' + likeCount : ''}</a>
       <button class="aspect-toggle ${aspectMode?'on':''}" onclick="toggleAspectMode()" title="Tick what you like/dislike to train recommendations">🎯 Refine my taste${aspectMode?' · ON':''}</button>
     </div>`
     + discoRichCard(l)
@@ -294,20 +296,12 @@ function swipe(liked) {
   saveSwipe(id, liked);
   const aspectsChanged = applyAspects(liked, discoCurrent);   // up/down-weight ticked aspects
   if (aspectsChanged) discoQueue = [];                        // re-rank immediately with new weights
-  // A 👍 also saves to Favorites (so all your likes live in one place: Saved)
-  if (liked) {
-    (async () => {
-      const u = (typeof ensureUser === 'function') ? await ensureUser() : currentUser;
-      if (!u) {
-        if (typeof showToast === 'function') showToast('Sign in to save your likes to Favorites');
-        return;
-      }
-      if (!FAVS.has(id)) {
-        FAVS.add(id); if (typeof updateFavCount === 'function') updateFavCount();
-        if (supa) supa.from('favorites').upsert({ user_id: u.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true });
-      }
-    })();
+  // Likes stay in their own "Likes" list (separate from Favorites). The user can
+  // sync them to favorites — all or selected — from the Likes view.
+  if (liked && !currentUser && typeof ensureUser === 'function') {
+    ensureUser().then(u => { if (!u && typeof showToast === 'function') showToast('Sign in so your likes are saved'); });
   }
+  if (typeof updateLikeCount === 'function') updateLikeCount();
   if (Object.keys(SWIPES).length % 4 === 0) discoQueue = [];
   renderDiscover();
   const v = document.getElementById('discover-view'); if (v) v.scrollTop = 0;

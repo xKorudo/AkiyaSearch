@@ -397,9 +397,7 @@ async function toggleFav(id, el) {
       .upsert({ user_id: currentUser.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true }));
   } else {
     ({ error } = await supa.from('favorites').delete().eq('user_id', currentUser.id).eq('listing_id', id));
-    // Also clear a Discover 👍 like for this listing so it doesn't reappear in Saved
-    try { await supa.from('swipes').delete().eq('user_id', currentUser.id).eq('listing_id', id); } catch {}
-    if (typeof SWIPES === 'object' && SWIPES) delete SWIPES[id];
+    // Likes (Discover swipes) are independent now — unfavoriting does NOT touch them.
   }
   if (error) { console.error('favorite sync failed:', error); showToast('⚠ Could not save favorite: ' + error.message); }
 }
@@ -409,15 +407,37 @@ async function loadCloudFavs() {
   if (!supa || !currentUser) { updateFavCount(); return; }
   const { data, error } = await supa.from('favorites').select('listing_id').eq('user_id', currentUser.id);
   if (error) { console.error('load favorites failed:', error); return; }
-  (data || []).forEach(r => FAVS.add(r.listing_id));
-  // Also surface 👍 likes from Discover (stored as swipes) so they always show
-  // under Saved, even if the favorites write didn't go through.
-  try {
-    const { data: sw } = await supa.from('swipes').select('listing_id,liked').eq('user_id', currentUser.id).eq('liked', true);
-    (sw || []).forEach(r => FAVS.add(r.listing_id));
-  } catch {}
+  (data || []).forEach(r => FAVS.add(r.listing_id));   // favorites are favorites only
   updateFavCount();
   if (typeof renderList === 'function') renderList();
+}
+
+// Liked listing ids (Discover 👍), kept separate from favorites.
+function likedIds() { return Object.keys(SWIPES).filter(id => SWIPES[id]); }
+function updateLikeCount() {
+  const el = document.getElementById('like-count');
+  if (el) el.textContent = likedIds().length;
+  // refresh the Likes view if it's the one being shown
+  if (typeof activeSection !== 'undefined' && activeSection === 'likes' && typeof renderLikes === 'function') renderLikes();
+}
+// Sync a like into favorites (used for "add selected" / "add all").
+async function likeToFav(id) {
+  if (!(await ensureUser())) { openAuth(); return false; }
+  if (!FAVS.has(id)) {
+    FAVS.add(id); updateFavCount();
+    if (supa) { try { await supa.from('favorites').upsert({ user_id: currentUser.id, listing_id: id }, { onConflict: 'user_id,listing_id', ignoreDuplicates: true }); } catch {} }
+  }
+  return true;
+}
+async function syncAllLikesToFavs() {
+  if (!(await ensureUser())) { openAuth(); return; }
+  const ids = likedIds().filter(id => !FAVS.has(id));
+  if (!ids.length) { showToast('All your likes are already in favorites'); return; }
+  ids.forEach(id => FAVS.add(id));
+  updateFavCount();
+  if (supa) { try { await supa.from('favorites').upsert(ids.map(id => ({ user_id: currentUser.id, listing_id: id })), { onConflict: 'user_id,listing_id', ignoreDuplicates: true }); } catch {} }
+  showToast(`Added ${ids.length} like${ids.length>1?'s':''} to favorites`);
+  if (typeof filter === 'function') filter();
 }
 
 function toggleFavView() {
@@ -1410,6 +1430,7 @@ async function loadSwipes() {
   if (supa && currentUser) {
     try { const { data } = await supa.from('swipes').select('listing_id,liked'); (data||[]).forEach(r => SWIPES[r.listing_id] = r.liked); } catch {}
   }
+  updateLikeCount();
 }
 
 // ── DEMO DATA ─────────────────────────────────────────────────────────────────
