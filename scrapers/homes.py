@@ -9,6 +9,15 @@ import random
 import time
 import re
 import json
+import os
+
+# Deep-mode run limits (overridable via env in CI):
+#   DEEP_PER_PREF      — max NEW listings to grab per prefecture per run (then
+#                        move on; the deep cursor resumes here next run).
+#   SCRAPE_TIME_BUDGET — overall seconds before the whole scrape stops, so the
+#                        job finishes (build + deploy) well under GitHub's 6h cap.
+DEEP_PER_PREF = int(os.environ.get("DEEP_PER_PREF", "180"))
+SCRAPE_TIME_BUDGET = int(os.environ.get("SCRAPE_TIME_BUDGET", str(int(4.5 * 3600))))
 
 from core.models import Listing
 from core.normalize import normalize_price, is_valid_image
@@ -222,11 +231,19 @@ def scrape(mode="fresh", max_pages=100):
 
     results = []
     consecutive_blocked = 0
+    start = time.monotonic()
+    time_up = False
 
     order = list(PREFECTURES)
     random.shuffle(order)
 
     for pref_jp, params in order:
+        # Global time budget — stop the whole scrape with time to spare for the
+        # build + deploy steps (prefectures already done kept their cursors).
+        if time.monotonic() - start > SCRAPE_TIME_BUDGET:
+            print(f"  Time budget reached ({SCRAPE_TIME_BUDGET}s) — stopping scrape early.", flush=True)
+            break
+
         pref_count = 0
         blocked = False
         zero_new_pages = 0
@@ -339,6 +356,14 @@ def scrape(mode="fresh", max_pages=100):
 
                 if mode == "deep":
                     new_cursor = page  # track the lowest page we've reached
+                    # Per-prefecture cap: grab ~DEEP_PER_PREF new listings, then
+                    # move on. The cursor (above) resumes here on the next run.
+                    if pref_count >= DEEP_PER_PREF:
+                        break
+                    # Respect the overall time budget mid-prefecture too.
+                    if time.monotonic() - start > SCRAPE_TIME_BUDGET:
+                        time_up = True
+                        break
 
                 # Fresh mode early-stop: two consecutive fully-known pages → caught up
                 if mode == "fresh":
@@ -366,6 +391,10 @@ def scrape(mode="fresh", max_pages=100):
         if mode == "deep" and new_cursor is not None:
             # next run: start 1 page back (overlap covers SUUMO drift)
             set_deep_cursor(pref_jp, new_cursor)
+
+        if time_up:
+            print(f"  Time budget reached ({SCRAPE_TIME_BUDGET}s) — stopping scrape early.", flush=True)
+            break
 
         # Early-bail ONLY on real blocks (not on prefectures that are simply
         # exhausted) so we don't keep hammering a blocked IP.

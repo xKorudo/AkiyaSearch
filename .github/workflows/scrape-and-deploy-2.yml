@@ -18,6 +18,7 @@ concurrency:
 jobs:
   scrape-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 350   # stay under GitHub's hard 6h cancel
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,6 +45,8 @@ jobs:
         run: python run_pipeline.py
         env:
           SCRAPE_MODE: deep
+          DEEP_PER_PREF: "180"          # ~180 new listings per prefecture per run
+          SCRAPE_TIME_BUDGET: "16200"   # 4.5h scrape cap → leaves time for build+deploy
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
