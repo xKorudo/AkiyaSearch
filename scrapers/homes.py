@@ -191,8 +191,23 @@ DEEP_START = 200   # assumed upper bound for SUUMO pages per prefecture
 
 
 def _probe_last_page(session, params):
-    """Find the actual last SUUMO page for a prefecture by probing forward
-    from a low estimate in steps, then backtracking to the exact boundary."""
+    """Find the last SUUMO page for a prefecture.
+
+    Fast path: SUUMO's pagination on page 1 contains a link to the final page
+    (…&pn=NN). Reading the max pn there gives the last page in ONE request.
+    Fallback: probe forward in jumps, then backtrack (slow, many requests)."""
+    try:
+        for _ in range(3):
+            r = session.get(BASE.format(params, 1), timeout=25)
+            if r.status_code == 200 and len(r.text) > 12000:
+                pns = [int(m) for m in re.findall(r"pn=(\d+)", r.text)]
+                if pns:
+                    return max(pns)
+                break  # page OK but no pager → single-page prefecture
+            time.sleep(random.uniform(20, 35))
+    except Exception:
+        pass
+
     # Step forward in large jumps until we hit an empty page
     step, page = 20, 20
     last_good = 1
@@ -311,10 +326,13 @@ def scrape(mode="fresh", max_pages=100):
                     desc_el = card.select_one(".property_unit-comment, .cassette-bukken-shousai-txt, [class*='comment']")
                     list_desc = desc_el.get_text(" ", strip=True)[:400] if desc_el else ""
 
-                    # Detail page fetch for new listings only
+                    # Detail page fetch for new listings only.
+                    # SKIP in deep mode — the dedicated backfill-details / backfill-images
+                    # workflows enrich descriptions, traffic and galleries separately, so
+                    # the deep scrape stays fast (no ~1-2s fetch per new listing).
                     detail_desc = ""
                     detail_traffic = ""
-                    if href and href not in existing_urls:
+                    if mode != "deep" and href and href not in existing_urls:
                         try:
                             dr = session.get(href, timeout=12)
                             if dr.status_code == 200 and len(dr.text) > 5000:
