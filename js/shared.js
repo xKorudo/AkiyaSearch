@@ -639,30 +639,30 @@ function renderWatchlists() {
     html += `<div class="watch-empty">No watchlists yet. Create one above, then add houses with the "👁 Watch" button on any listing.</div>`;
   }
   for (const w of WATCHLISTS) {
-    const cards = w.items.map(id => { const l = listingById(id); return l ? wlCardHTML(w.id, l) : ''; }).join('');
+    const cards = w.items.map(id => { const l = listingById(id); return l ? wlItemHTML(w.id, l) : ''; }).join('');
+    const meta = `${w.items.length} house${w.items.length===1?'':'s'} · ${w.memberCount} member${w.memberCount>1?'s':''} ${w.isOwner?'· owner':'· shared'}`;
     html += `<div class="wl-card">
-      <div class="wl-head">
+      <div class="wl-head" onclick="this.parentElement.classList.toggle('open')" title="Click to expand / collapse">
+        <span class="wl-chevron">▸</span>
         <span class="wl-name">${w.name}</span>
-        <span class="wl-meta">${w.items.length} houses · ${w.memberCount} member${w.memberCount>1?'s':''} ${w.isOwner?'· owner':'· shared'}</span>
-        <div class="wl-actions">
+        <span class="wl-meta">${meta}</span>
+        <span class="wl-expand">${w.items.length>0?`Show all ${w.items.length} ▾`:''}</span>
+        <div class="wl-actions" onclick="event.stopPropagation()">
           <button class="hbtn" onclick="copyInviteLink('${w.id}')">🔗 Copy invite link</button>
           ${w.isOwner ? `<button class="hbtn" onclick="if(confirm('Delete this watchlist?'))deleteWatchlist('${w.id}')">Delete</button>` : ''}
         </div>
       </div>
-      ${w.items.length ? `<div class="wl-grid">${cards}</div>` : `<div class="watch-empty" style="padding:20px">No houses yet — open a listing and tap "👁 Watch".</div>`}
+      ${w.items.length ? `<div class="wl-cards">${cards}</div>` : `<div class="watch-empty" style="padding:20px">No houses yet — open a listing and tap "👁 Watch".</div>`}
     </div>`;
   }
   el.innerHTML = html;
 }
 
-function wlCardHTML(wlId, l) {
-  const img = l.image_url ? `<img src="${l.image_url}" style="width:100%;height:120px;object-fit:cover;border-radius:6px" onerror="this.style.display='none'">` : '';
-  return `<div style="background:var(--surface3);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer" onclick="openDetail('${l.id}')">
-    ${img}
-    <div style="font-size:10px;color:var(--accent);font-family:var(--mono);margin-top:6px">${prefToEN(l.prefecture)}${l.city?' · '+l.city:''}</div>
-    <div style="font-size:13px;font-weight:600;margin:3px 0;line-height:1.3">${(l.title_en||l.title||'').slice(0,60)}</div>
-    <div style="font-family:var(--mono);color:var(--accent2);font-size:14px">${l.price_jpy?fmtYen(l.price_jpy):'要問合せ'}${l.price_jpy&&userCurrency!=='JPY'?` · ${convPrice(l.price_jpy)}`:''}</div>
-    <button class="hbtn" style="margin-top:8px;width:100%" onclick="event.stopPropagation();removeFromWatchlist('${wlId}','${l.id}')">Remove</button>
+// Watchlist house = the same card as Search (cardHTML), with a remove button.
+function wlItemHTML(wlId, l) {
+  return `<div class="wl-item">
+    <button class="wl-remove" title="Remove from watchlist" onclick="event.stopPropagation();event.preventDefault();removeFromWatchlist('${wlId}','${l.id}')">✕</button>
+    ${cardHTML(l)}
   </div>`;
 }
 

@@ -118,12 +118,23 @@ select:focus { border-color: var(--accent); }
 .watch-create { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
 .watch-create input { flex: 1; min-width: 180px; height: 38px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r); padding: 0 12px; color: var(--text); font-family: var(--sans); font-size: 13px; outline: none; }
 .watch-create input:focus { border-color: var(--accent); }
-.wl-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 18px; overflow: hidden; }
-.wl-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.wl-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; margin: 0 auto 18px; max-width: 1560px; overflow: hidden; }
+.wl-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; cursor: pointer; user-select: none; }
+.wl-head:hover { background: var(--surface3); }
+.wl-chevron { color: var(--accent); font-size: 13px; transition: transform .15s; display: inline-block; }
+.wl-card.open .wl-chevron { transform: rotate(90deg); }
 .wl-name { font-size: 16px; font-weight: 700; }
 .wl-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+.wl-expand { font-size: 11px; color: var(--accent); font-family: var(--mono); }
+.wl-card.open .wl-expand { display: none; }
 .wl-actions { margin-left: auto; display: flex; gap: 6px; }
-.wl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; padding: 14px; }
+/* Same big cards as Search; collapsed = one row, click header to expand */
+.wl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; padding: 18px; max-height: 540px; overflow: hidden; position: relative; transition: max-height .2s; }
+.wl-card.open .wl-cards { max-height: none; }
+.wl-card:not(.open) .wl-cards::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: linear-gradient(transparent, var(--surface2)); pointer-events: none; }
+.wl-item { position: relative; }
+.wl-remove { position: absolute; top: 8px; right: 8px; z-index: 5; width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,.65); border: 1px solid var(--border2); color: #fff; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.wl-remove:hover { background: var(--red); border-color: var(--red); transform: scale(1.1); }
 .atw-menu { position: absolute; z-index: 10000; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.6); padding: 6px; min-width: 220px; }
 .atw-item { padding: 9px 10px; border-radius: 5px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .atw-item:hover { background: var(--surface2); }
