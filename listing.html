@@ -61,6 +61,7 @@ function convPrice(j){if(j==null)return'';if(userCurrency==='JPY')return'¥'+Mat
 function gmapsUrl(l){if(l.lat&&l.lng)return'https://www.google.com/maps/search/?api=1&query='+l.lat+','+l.lng;const hasJp=l.title&&/[　-鿿]/.test(l.title);const addr=hasJp?l.title:(l.prefecture||'')+(l.city||'');return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr+' 日本');}
 function bigImg(u){return u&&(u.includes('resizeImage')||u.includes('w='))?u.replace(/([?&])w=\d+/i,'$1w=1200').replace(/([?&])h=\d+/i,'$1h=900'):u;}
 function disclaimerHTML(){return `<div class="disclaimer" style="margin-top:18px;padding:11px 13px;background:rgba(232,160,32,.06);border:1px solid var(--border2);border-left:3px solid var(--accent);border-radius:6px;font-size:11px;line-height:1.6;color:var(--text2)">⚠ <strong style="color:var(--text)">Disclaimer:</strong> Listings are aggregated automatically from third-party sources (SUUMO, LIFULL Akiya Bank and others). Details such as the address, location, price, size, build year, photos and availability may be inaccurate, incomplete, outdated or already sold, and translations are machine-generated. Airbnb income, seismic and currency figures are rough estimates, not advice. Always verify everything with the original source and a licensed professional before making any decision. We accept no liability for errors or decisions made based on this information.</div>`;}
+function proGateHTML(desc){return`<div style="padding:20px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;text-align:center"><div style="font-size:26px;margin-bottom:8px">🔒</div><div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px">${desc}</div><a href="mailto:info@akiyasearch.com?subject=Pro+subscription" style="display:inline-block;padding:9px 20px;background:var(--accent);color:#000;font-weight:700;font-size:13px;border-radius:6px;text-decoration:none">Get Pro access →</a></div>`;}
 function calcAirbnb(l){let s=50;const t=((l.title||'')+(l.description||'')).toLowerCase();const to=AIRBNB_TOURISM[l.prefecture]||45;s=s*.3+to*.7;if(/海|ocean|beach|sea|coast/.test(t))s+=12;if(/富士|fuji|ski|スキー|温泉|onsen/.test(t))s+=10;if(/古民家|kominka|町家/.test(t))s+=8;if(/リノベ|renovated|良好/.test(t))s+=9;if(/大規模修繕/.test(t))s-=18;if(l.size_m2>=100)s+=8;if(l.size_m2>=150)s+=5;if(l.price_jpy===0)s+=15;else if(l.price_jpy<1e6)s+=12;else if(l.price_jpy<3e6)s+=7;else if(l.price_jpy>=8e6)s-=3;if(l.built_year&&l.built_year<1960)s-=5;if(l.built_year&&l.built_year>1990)s+=4;return Math.min(99,Math.max(5,Math.round(s)));}
 function airbnbColor(s){return s>=75?'var(--green)':s>=55?'var(--accent)':s>=35?'var(--blue)':'var(--text3)';}
 function seismicInfo(y){if(!y)return{era:'Unknown',label:'Build year unknown',color:'var(--text3)',risk:'Unknown',note:'No construction year on record — verify the seismic standard before buying.'};if(y<1981)return{era:'旧耐震 (Pre-1981)',label:'Old seismic standard',color:'var(--red)',risk:'High',note:'Built before the 1981 earthquake code. May need seismic retrofitting; can be harder to insure/finance.'};if(y<2000)return{era:'新耐震 (1981–2000)',label:'New seismic standard (1981)',color:'var(--accent)',risk:'Moderate',note:'Meets the 1981 earthquake code. Generally sound, but pre-2000 wood joints are weaker than the latest standard.'};return{era:'2000年基準 (2000+)',label:'Current seismic standard',color:'var(--green)',risk:'Low',note:'Built to the strengthened post-2000 code — the strongest standard for wooden houses.'};}
@@ -102,14 +103,20 @@ function initCarousel(){
 })();
 
 // ── auth + favorites + watchlists (shares the same Supabase session) ──
-let supa=null,currentUser=null,FAVS=new Set(),WATCHLISTS=[],CURRENT=null;
+let supa=null,currentUser=null,FAVS=new Set(),WATCHLISTS=[],CURRENT=null,userTier='free';
+async function loadUserTier(){
+  if(!supa||!currentUser){userTier='free';return;}
+  try{const{data}=await supa.from('user_profiles').select('tier').eq('user_id',currentUser.id).maybeSingle();userTier=data?.tier||'free';}catch{userTier='free';}
+}
 async function initSupa(){
   if(!(SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase))return;
   supa=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
   const {data}=await supa.auth.getSession();
-  if(data&&data.session){currentUser=data.session.user;await loadFavsAndWatchlists();}
-  renderActions(CURRENT);   // refresh hearts/watchlist state once cloud data is loaded
-  if(CURRENT&&CURRENT.id){try{supa.rpc('bump_listing_view',{lid:CURRENT.id});}catch{}}  // count this view (🔥 HOT)
+  if(data&&data.session){currentUser=data.session.user;await loadFavsAndWatchlists();await loadUserTier();}
+  renderActions(CURRENT);
+  renderAirbnbSection(CURRENT);
+  if(userTier==='pro'&&CURRENT){renderHazards(CURRENT);const aside=document.getElementById('hazard-aside');if(aside)aside.insertAdjacentHTML('beforeend',prefBoxHTML(CURRENT));}
+  if(CURRENT&&CURRENT.id){try{supa.rpc('bump_listing_view',{lid:CURRENT.id});}catch{}}
 }
 async function loadFavsAndWatchlists(){
   if(!supa||!currentUser)return;
@@ -222,6 +229,37 @@ async function sendRep(){
   alert('✓ Report sent — thank you!');
 }
 
+function renderAirbnbSection(l){
+  const el=document.getElementById('ab-section');
+  const ttl=document.getElementById('ab-title');
+  if(!l||!el)return;
+  if(userTier!=='pro'){
+    if(ttl)ttl.textContent='Airbnb potential 🔒';
+    el.innerHTML=proGateHTML('Estimated nightly rate, break-even analysis, Airbnb score & minpaku (民泊) rules — available with a Pro subscription.');
+    return;
+  }
+  if(ttl)ttl.textContent='Airbnb potential';
+  const ab=calcAirbnb(l),abc=airbnbColor(ab),v=airbnbVerdict(l);
+  el.innerHTML=`<div class="card">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:56px;height:56px;border-radius:50%;border:2px solid ${abc};display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <span style="font-family:var(--mono);font-size:18px;color:${abc}">${ab}</span><span style="font-size:8px;color:${abc}">/99</span></div>
+      <div style="flex:1"><div style="font-weight:700;color:${abc}">${ab>=75?'Strong Airbnb Candidate':ab>=60?'Good Potential':ab>=45?'Moderate Potential':'Limited Airbnb Appeal'}</div></div>
+    </div>
+    <div class="metrics">
+      <div><div class="metric-l">EST. NIGHTLY</div><div class="metric-v" style="color:var(--accent2)">€${v.nightly}–€${v.nightly+20}</div></div>
+      <div><div class="metric-l">EST. MONTHLY</div><div class="metric-v" style="color:var(--accent2)">€${v.monthly}</div></div>
+      <div><div class="metric-l">MINPAKU NIGHTS/YR</div><div class="metric-v" style="color:${v.special?'var(--green)':'var(--accent)'}">${v.annualNights}${v.special?'+':' max'}</div></div>
+      <div><div class="metric-l">BREAK-EVEN</div><div class="metric-v" style="font-size:12px;color:var(--text2)">${l.price_jpy===0?'Immediate':v.roi?'~'+v.roi+' yrs':'N/A'}</div></div>
+    </div>
+    <div class="note" style="border-left-color:${v.special?'var(--green)':'var(--accent)'}"><strong style="color:${v.special?'var(--green)':'var(--accent)'}">⚖ 民泊 Minpaku law:</strong> ${v.minpaku}</div>
+    <div class="pc">
+      <div><div class="pc-t" style="color:var(--green)">✓ Pros</div>${v.pros.map(p=>`<div class="point">· ${p}</div>`).join('')||'<div class="point">Standard potential</div>'}</div>
+      <div><div class="pc-t" style="color:var(--red)">✕ Cons</div>${v.cons.map(c=>`<div class="point">· ${c}</div>`).join('')||'<div class="point">No major issues</div>'}</div>
+    </div>
+  </div>`;
+}
+
 function render(l){
   CURRENT=l;
   document.title=(l.title_en||l.title||'Listing')+' — Akiya Search';
@@ -274,25 +312,8 @@ function render(l){
       ${l.description_en?`<div class="desc">${l.description_en}</div>`:''}
       ${l.description?`<div class="desc jp" style="color:var(--text3)">${l.description}</div>`:''}`:''}
 
-    <div class="sec-title">Airbnb potential</div>
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
-        <div style="width:56px;height:56px;border-radius:50%;border:2px solid ${abc};display:flex;flex-direction:column;align-items:center;justify-content:center">
-          <span style="font-family:var(--mono);font-size:18px;color:${abc}">${ab}</span><span style="font-size:8px;color:${abc}">/99</span></div>
-        <div style="flex:1"><div style="font-weight:700;color:${abc}">${ab>=75?'Strong Airbnb Candidate':ab>=60?'Good Potential':ab>=45?'Moderate Potential':'Limited Airbnb Appeal'}</div></div>
-      </div>
-      <div class="metrics">
-        <div><div class="metric-l">EST. NIGHTLY</div><div class="metric-v" style="color:var(--accent2)">€${v.nightly}–€${v.nightly+20}</div></div>
-        <div><div class="metric-l">EST. MONTHLY</div><div class="metric-v" style="color:var(--accent2)">€${v.monthly}</div></div>
-        <div><div class="metric-l">MINPAKU NIGHTS/YR</div><div class="metric-v" style="color:${v.special?'var(--green)':'var(--accent)'}">${v.annualNights}${v.special?'+':' max'}</div></div>
-        <div><div class="metric-l">BREAK-EVEN</div><div class="metric-v" style="font-size:12px;color:var(--text2)">${l.price_jpy===0?'Immediate':v.roi?'~'+v.roi+' yrs':'N/A'}</div></div>
-      </div>
-      <div class="note" style="border-left-color:${v.special?'var(--green)':'var(--accent)'}"><strong style="color:${v.special?'var(--green)':'var(--accent)'}">⚖ 民泊 Minpaku law:</strong> ${v.minpaku}</div>
-      <div class="pc">
-        <div><div class="pc-t" style="color:var(--green)">✓ Pros</div>${v.pros.map(p=>`<div class="point">· ${p}</div>`).join('')||'<div class="point">Standard potential</div>'}</div>
-        <div><div class="pc-t" style="color:var(--red)">✕ Cons</div>${v.cons.map(c=>`<div class="point">· ${c}</div>`).join('')||'<div class="point">No major issues</div>'}</div>
-      </div>
-    </div>
+    <div class="sec-title" id="ab-title">Airbnb potential</div>
+    <div id="ab-section"></div>
 
     ${(l.lat&&l.lng)?`<div class="sec-title">Approximate location</div><div id="map"></div><div style="font-size:11px;color:var(--text3);margin-bottom:8px">📍 Town-level only — use the Google Maps link above for the exact address.</div>`:''}
 
@@ -309,6 +330,7 @@ function render(l){
   }
   renderActions(l);
   renderHazards(l);
+  renderAirbnbSection(l);
   initCarousel();
   const aside=document.getElementById('hazard-aside');
   if(aside) aside.insertAdjacentHTML('beforeend', prefBoxHTML(l));
@@ -380,6 +402,7 @@ function _haversineKm(lat1,lng1,lat2,lng2){
 async function loadTsunami(l){
   const el=document.getElementById('hz-tsunami');
   if(!el) return;
+  if(userTier!=='pro'){el.innerHTML=proGateHTML('Tsunami event history (NOAA NCEI, 200 km radius) — available with a Pro subscription.');return;}
   if(!(l.lat&&l.lng)){ el.innerHTML='<span class="hz-muted">No coordinates — use the inundation map below.</span>'; return; }
   try{
     const r=await fetch('https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/tsunamis/events?country=JAPAN&minYear=1900');
@@ -407,6 +430,7 @@ async function loadTsunami(l){
 async function loadQuakes(l){
   const el=document.getElementById('hz-quake');
   if(!el) return;
+  if(userTier!=='pro'){el.innerHTML=proGateHTML('Recent earthquake events within 100 km (USGS, last 20 years) — available with a Pro subscription.');return;}
   if(!(l.lat&&l.lng)){ el.innerHTML='<span class="hz-muted">No coordinates for this listing — use the hazard maps below.</span>'; return; }
   const years=20;
   const since=new Date(Date.now()-years*365*24*3600*1000).toISOString().slice(0,10);
