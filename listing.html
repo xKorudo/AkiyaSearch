@@ -144,10 +144,17 @@ async function atwCreate(id){
   if(data){await supa.from('watchlist_members').insert({watchlist_id:data.id,user_id:currentUser.id,role:'owner'});await supa.from('watchlist_items').upsert({watchlist_id:data.id,listing_id:id,added_by:currentUser.id});await loadFavsAndWatchlists();}
   document.querySelector('.atw-menu')?.remove();
 }
+function shareListig(l){
+  const url=location.href;
+  const title=(l.title_en||l.title||'Akiya Property')+' — '+(l.price_label||'');
+  if(navigator.share){navigator.share({title,url}).catch(()=>{});}
+  else{navigator.clipboard.writeText(url).then(()=>{const b=document.getElementById('share-btn');if(b){b.textContent='✓ Copied';setTimeout(()=>{b.textContent='⤴ Share';},1800);}});}
+}
 function renderActions(l){
   if(!l)return;const el=document.getElementById('actions');if(!el)return;
   el.innerHTML=`<button class="act-btn ${isFav(l.id)?'on':''}" onclick="toggleFav('${l.id}')">${isFav(l.id)?'♥ Saved':'♡ Save to favorites'}</button>
-    <button class="act-btn" onclick="openWatchMenu('${l.id}',this)">👁 Add to watchlist</button>`;
+    <button class="act-btn" onclick="openWatchMenu('${l.id}',this)">👁 Add to watchlist</button>
+    <button class="act-btn" id="share-btn" onclick="shareListig(CURRENT)">⤴ Share</button>`;
 }
 
 async function init(){
