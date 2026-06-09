@@ -40,6 +40,27 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     These listing pairs scored ≥ 90/100 on prefecture · city · price · size similarity.
     Review each pair and either dismiss (not a duplicate) or hide the copy.
   </p>
+
+  <div class="card" style="margin-bottom:20px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px">Bulk action — hide by score threshold</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label style="font-size:13px;color:var(--text2)">Hide all pairs with score ≥
+        <input id="bulk-threshold" type="number" min="1" max="100" value="95"
+          style="width:60px;margin-left:8px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface3);color:var(--text1);font-family:var(--mono);font-size:13px;">
+        %
+      </label>
+      <label style="font-size:13px;color:var(--text2);display:flex;align-items:center;gap:6px">
+        Side:
+        <select id="bulk-side" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface3);color:var(--text1);font-family:var(--mono);font-size:13px;">
+          <option value="left">Left (listing A)</option>
+          <option value="right">Right (listing B)</option>
+        </select>
+      </label>
+      <button class="btn danger" onclick="bulkHide()">Run bulk hide</button>
+      <span id="bulk-status" style="font-size:12px;color:var(--text2);font-family:var(--mono)"></span>
+    </div>
+  </div>
+
   <div id="reviews"><div class="empty">Loading…</div></div>
 </div>
 
@@ -164,6 +185,40 @@ async function hideOne(listingId, reviewId) {
   const { error } = await adminSetHidden(listingId, true);
   if (error) { showToast('⚠ Could not hide: ' + error.message); return; }
   if (await _resolveReview(reviewId, 'resolved')) showToast('Listing hidden');
+}
+
+async function bulkHide() {
+  const threshold = parseInt(document.getElementById('bulk-threshold').value, 10);
+  const side = document.getElementById('bulk-side').value;
+  const status = document.getElementById('bulk-status');
+  if (isNaN(threshold) || threshold < 1 || threshold > 100) {
+    showToast('⚠ Enter a threshold between 1 and 100'); return;
+  }
+
+  const { data, error } = await supa
+    .from('pending_reviews')
+    .select('id, listing_a_id, listing_b_id, score')
+    .eq('status', 'pending')
+    .gte('score', threshold);
+
+  if (error) { showToast('⚠ ' + error.message); return; }
+  if (!data || !data.length) { showToast('No pairs match that threshold'); return; }
+
+  const confirmed = confirm(`Hide ${side} listing for ${data.length} pair(s) with score ≥ ${threshold}?`);
+  if (!confirmed) return;
+
+  let done = 0, failed = 0;
+  status.textContent = `0 / ${data.length}…`;
+  for (const r of data) {
+    const listingId = side === 'left' ? r.listing_a_id : r.listing_b_id;
+    const { error: he } = await adminSetHidden(listingId, true);
+    if (he) { failed++; continue; }
+    await _resolveReview(r.id, 'resolved');
+    done++;
+    status.textContent = `${done} / ${data.length}…`;
+  }
+  status.textContent = `Done: ${done} hidden${failed ? ', ' + failed + ' failed' : ''}`;
+  showToast(`Bulk hide complete — ${done} listings hidden`);
 }
 </script>
 </body>
