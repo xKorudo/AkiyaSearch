@@ -997,7 +997,7 @@ function cardHTML(l) {
   const prefEN = prefToEN(l.prefecture);
 
   return `
-  <a class="lcard" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank">
+  <a class="lcard" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank" onclick="if(typeof saveSearchState==='function')saveSearchState()">
     <div class="lcard-img-wrap">
       ${img}${placeholder}
       <div class="lcard-badges">${badgeHot}${badgeFree}${badgeCheap}${badgeAB}</div>

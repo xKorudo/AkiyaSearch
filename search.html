@@ -204,11 +204,68 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let activeTags = new Set();
 let activeSection = 'search';
 
+// ── STATE SAVE / RESTORE (back-navigation) ────────────────────────────────────
+const _SS_KEY = 'akiya_search_state';
+
+function saveSearchState() {
+  try {
+    sessionStorage.setItem(_SS_KEY, JSON.stringify({
+      q:         document.getElementById('q')?.value || '',
+      pref:      document.getElementById('pref-select')?.value || '',
+      sort:      document.getElementById('sort-select')?.value || '',
+      source:    document.getElementById('source-select')?.value || '',
+      seismic:   document.getElementById('seismic-select')?.value || '',
+      priceMin:  document.getElementById('price-min')?.value || '',
+      priceMax:  document.getElementById('price-max')?.value || '',
+      tags:      [...activeTags],
+      filterOpen: document.getElementById('filter-panel')?.classList.contains('open') || false,
+      scroll:    document.getElementById('listings-list')?.scrollTop || 0,
+      rendered:  renderedCount,
+    }));
+  } catch {}
+}
+
+function _restoreSearchState() {
+  try {
+    const raw = sessionStorage.getItem(_SS_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(_SS_KEY);
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
 function onDataLoaded() {
   populateSources();
+  const saved = _restoreSearchState();
+  if (saved) {
+    if (saved.q)       document.getElementById('q').value = saved.q;
+    if (saved.pref)    document.getElementById('pref-select').value = saved.pref;
+    if (saved.sort)    document.getElementById('sort-select').value = saved.sort;
+    if (saved.source)  document.getElementById('source-select').value = saved.source;
+    if (saved.seismic) document.getElementById('seismic-select').value = saved.seismic;
+    if (saved.priceMin) document.getElementById('price-min').value = saved.priceMin;
+    if (saved.priceMax) document.getElementById('price-max').value = saved.priceMax;
+    activeTags = new Set(saved.tags || []);
+    document.querySelectorAll('.ftag').forEach(b => { if (activeTags.has(b.dataset.tag)) b.classList.add('on'); });
+    if (saved.filterOpen) {
+      document.getElementById('filter-panel')?.classList.add('open');
+      document.getElementById('filters-toggle')?.classList.add('active');
+    }
+  }
   if (activeSection === 'likes') renderLikes();
   else if (activeSection === 'watchlists') renderWatchlists();
-  else filter();
+  else {
+    filter();
+    if (saved && saved.rendered > renderedCount) {
+      while (renderedCount < saved.rendered && renderedCount < FILTERED.length) renderList(true);
+    }
+    if (saved?.scroll) {
+      requestAnimationFrame(() => {
+        const el = document.getElementById('listings-list');
+        if (el) el.scrollTop = saved.scroll;
+      });
+    }
+  }
   openDeepLink();
 }
 
