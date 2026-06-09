@@ -93,6 +93,23 @@ def main():
                 "risk shrinking it. Re-run, or set ALLOW_SHRINK=1 to deploy local data as-is."
             )
 
+    # Write compact meta index for Open Graph / link-preview Pages Function
+    meta = {
+        l["id"]: {
+            "title":       l.get("title", ""),
+            "title_en":    l.get("title_en", ""),
+            "price_label": l.get("price_label", ""),
+            "image_url":   l.get("image_url", ""),
+            "prefecture":  l.get("prefecture", ""),
+            "city":        l.get("city", ""),
+            "size_m2":     l.get("size_m2"),
+            "rooms":       l.get("rooms", ""),
+        }
+        for l in listings if l.get("id")
+    }
+    with open(os.path.join(OUT, "listing-meta.json"), "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, separators=(",", ":"))
+
     # Write chunks — each under CHUNK_SIZE listings so no file exceeds CF's 25 MiB limit
     chunks = [listings[i:i + CHUNK_SIZE] for i in range(0, max(len(listings), 1), CHUNK_SIZE)]
     n = len(chunks)
