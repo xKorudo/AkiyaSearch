@@ -497,7 +497,7 @@ async function forgotPassword() {
   }
   if (msg) { msg.className = 'auth-msg'; msg.textContent = '…'; }
   const { error } = await supa.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + '/reset-password.html',
+    redirectTo: 'https://akiya-finder-159.pages.dev/reset-password',
   });
   if (error) {
     if (msg) { msg.className = 'auth-msg error'; msg.textContent = error.message; }
