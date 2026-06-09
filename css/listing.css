@@ -97,4 +97,8 @@ h1{font-size:26px;font-weight:700;line-height:1.3;margin:6px 0;}
 .lb-x{position:absolute;top:16px;right:22px;color:#fff;font-size:30px;cursor:pointer;}
 .lb-n{position:absolute;top:50%;transform:translateY(-50%);color:#fff;font-size:40px;cursor:pointer;padding:14px;opacity:.7;}
 .lb-n:hover{opacity:1;}
-@media(max-width:680px){.wrap{padding:18px 16px 32px;border-radius:12px;}.specs{grid-template-columns:1fr 1fr;}.gallery{grid-template-columns:1fr 1fr;}h1{font-size:21px;}}
+@media(max-width:680px){.wrap{padding:18px 16px 32px;border-radius:12px;}.specs{grid-template-columns:1fr 1fr;}h1{font-size:21px;}}
+@media(max-width:480px){
+  .actions{gap:6px;}
+  .act-btn{padding:8px 10px;font-size:12px;gap:4px;}
+}

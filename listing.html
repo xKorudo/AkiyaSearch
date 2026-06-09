@@ -160,8 +160,8 @@ function shareListig(l){
 }
 function renderActions(l){
   if(!l)return;const el=document.getElementById('actions');if(!el)return;
-  el.innerHTML=`<button class="act-btn ${isFav(l.id)?'on':''}" onclick="toggleFav('${l.id}')">${isFav(l.id)?'♥ Saved':'♡ Save to favorites'}</button>
-    <button class="act-btn" onclick="openWatchMenu('${l.id}',this)">👁 Add to watchlist</button>
+  el.innerHTML=`<button class="act-btn ${isFav(l.id)?'on':''}" onclick="toggleFav('${l.id}')">${isFav(l.id)?'♥ Saved':'♡ Favorite'}</button>
+    <button class="act-btn" onclick="openWatchMenu('${l.id}',this)">👁 Watchlist</button>
     <button class="act-btn" id="share-btn" onclick="shareListig(CURRENT)">⤴ Share</button>`;
 }
 
