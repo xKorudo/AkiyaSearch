@@ -284,6 +284,10 @@ select:focus { border-color: var(--accent); }
   .detail-panel { width: 100vw; max-height: 100vh; height: 100%; border-radius: 0; border: none; }
   .yen-panel { width: calc(100% - 24px); right: 12px; left: 12px; }
   .auth-modal { width: calc(100% - 32px); }
-  .listings-list { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+  .listings-list { grid-template-columns: repeat(2, 1fr); padding: 12px; gap: 12px; }
   .notif-panel { width: calc(100% - 24px); left: 12px; }
+}
+
+@media (max-width: 520px) {
+  .listings-list { grid-template-columns: 1fr; }
 }
