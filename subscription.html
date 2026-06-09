@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pro Subscription — Akiya Search</title>
+<meta name="description" content="Unlock Airbnb income estimates, earthquake data and tsunami history for every listing.">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=Noto+Serif+JP:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://wmevbetyxqhtprdahxqh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtZXZiZXR5eHFodHByZGFoeHFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NzAyOTcsImV4cCI6MjA5NjE0NjI5N30.jd5TDcGI0dlSpypjuoPtdOuqhBhkf_ouX5MMg4oSfSI";
+</script>
+<link rel="stylesheet" href="css/subscription.css">
+</head>
+<body>
+
+<header>
+  <a class="logo" href="./">🏚 <span>Akiya</span> Search <span class="logo-jp">空き家</span></a>
+  <a class="back" href="./search.html">← Back to listings</a>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-label">Pro Subscription</div>
+  <h1>Invest smarter in <em>akiya</em></h1>
+  <p class="hero-sub">Unlock professional data for every listing — Airbnb income estimates, earthquake history and tsunami risk, all in one place.</p>
+
+  <!-- Billing toggle -->
+  <div class="toggle-wrap">
+    <span class="toggle-label" id="lbl-monthly">Monthly</span>
+    <label class="toggle">
+      <input type="checkbox" id="billing-toggle" onchange="switchBilling(this.checked)">
+      <span class="track"></span>
+    </label>
+    <span class="toggle-label" id="lbl-yearly">Yearly <span class="save-badge">Save 30%</span></span>
+  </div>
+</section>
+
+<!-- Pricing cards -->
+<section class="cards">
+
+  <!-- Free -->
+  <div class="card">
+    <div class="card-tier">Free</div>
+    <div class="card-price-wrap">
+      <span class="card-price">€0</span>
+      <span class="card-period">forever</span>
+    </div>
+    <div class="card-desc">Everything you need to browse and discover vacant houses across Japan.</div>
+    <a class="card-btn secondary" href="./search.html">Start for free</a>
+    <ul class="feature-list">
+      <li class="ok">All listings (10,000+)</li>
+      <li class="ok">Search, filter & map view</li>
+      <li class="ok">Favorites & watchlists</li>
+      <li class="ok">Price change alerts</li>
+      <li class="ok">Building seismic standard</li>
+      <li class="ok">Shared watchlists</li>
+      <li class="locked">Airbnb income estimate</li>
+      <li class="locked">Earthquake data (USGS)</li>
+      <li class="locked">Tsunami history (NOAA)</li>
+      <li class="locked">Priority support</li>
+    </ul>
+  </div>
+
+  <!-- Pro -->
+  <div class="card featured">
+    <div class="popular-badge">Most popular</div>
+    <div class="card-tier">Pro</div>
+    <div class="card-price-wrap">
+      <span class="card-price" id="price-val">€9</span>
+      <span class="card-period" id="price-period">/ month</span>
+    </div>
+    <div class="card-price-note" id="price-note" style="visibility:hidden">Billed €79 / year</div>
+    <div class="card-desc">Full data for serious buyers and investors. 14-day free trial, cancel anytime.</div>
+    <a class="card-btn primary" id="pro-btn" href="#subscribe">Start free trial →</a>
+    <ul class="feature-list">
+      <li class="ok">Everything in Free</li>
+      <li class="ok pro-feature">Airbnb income estimate</li>
+      <li class="ok pro-feature">Earthquake data (USGS)</li>
+      <li class="ok pro-feature">Tsunami history (NOAA)</li>
+      <li class="ok pro-feature">Break-even & ROI calculator</li>
+      <li class="ok pro-feature">Minpaku (民泊) law summary</li>
+      <li class="ok pro-feature">Priority e-mail support</li>
+      <li class="ok pro-feature">Early access to new features</li>
+    </ul>
+  </div>
+
+</section>
+
+<!-- Feature comparison -->
+<section class="compare">
+  <div class="compare-label">Feature breakdown</div>
+  <h2>What's included</h2>
+  <table class="compare-table">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Free</th>
+        <th class="pro-col">Pro</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="section-row"><td colspan="3">Listings</td></tr>
+      <tr><td>Browse all 10,000+ listings</td><td>✓</td><td class="pro-col">✓</td></tr>
+      <tr><td>Search, filter, map view</td><td>✓</td><td class="pro-col">✓</td></tr>
+      <tr><td>Price, size, year filters</td><td>✓</td><td class="pro-col">✓</td></tr>
+      <tr><td>Prefecture & source filter</td><td>✓</td><td class="pro-col">✓</td></tr>
+
+      <tr class="section-row"><td colspan="3">Account</td></tr>
+      <tr><td>Favorites</td><td>✓</td><td class="pro-col">✓</td></tr>
+      <tr><td>Watchlists</td><td>✓</td><td class="pro-col">✓</td></tr>
+      <tr><td>Shared watchlists</td><td>✓</td><td class="pro-col">✓</td></tr>
+      <tr><td>Price change alerts</td><td>✓</td><td class="pro-col">✓</td></tr>
+
+      <tr class="section-row"><td colspan="3">Building data</td></tr>
+      <tr><td>Seismic standard (build year)</td><td>✓</td><td class="pro-col">✓</td></tr>
+      <tr><td>Condition & floor area</td><td>✓</td><td class="pro-col">✓</td></tr>
+
+      <tr class="section-row"><td colspan="3">Pro — Investment data</td></tr>
+      <tr><td>Airbnb income estimate (nightly / monthly)</td><td>—</td><td class="pro-col">✓</td></tr>
+      <tr><td>Break-even & ROI years</td><td>—</td><td class="pro-col">✓</td></tr>
+      <tr><td>Minpaku (民泊) law summary per prefecture</td><td>—</td><td class="pro-col">✓</td></tr>
+      <tr><td>Earthquake history within 100 km (USGS)</td><td>—</td><td class="pro-col">✓</td></tr>
+      <tr><td>Tsunami events within 200 km (NOAA)</td><td>—</td><td class="pro-col">✓</td></tr>
+
+      <tr class="section-row"><td colspan="3">Support</td></tr>
+      <tr><td>Community support</td><td>✓</td><td class="pro-col">✓</td></tr>
+      <tr><td>Priority e-mail support</td><td>—</td><td class="pro-col">✓</td></tr>
+      <tr><td>Early access to new features</td><td>—</td><td class="pro-col">✓</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- FAQ -->
+<section class="faq">
+  <div class="faq-label">FAQ</div>
+  <h2>Common questions</h2>
+  <div class="faq-grid">
+
+    <div class="faq-item">
+      <div class="faq-q">What does the free trial include?</div>
+      <div class="faq-a">The 14-day trial gives you full Pro access — all Airbnb estimates, earthquake and tsunami data. No credit card required to start. You'll only be charged if you choose to continue.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I cancel at any time?</div>
+      <div class="faq-a">Yes. Cancel any time from your account — no questions asked. If you cancel during a billing period, you keep Pro access until the end of that period.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">How accurate are the Airbnb estimates?</div>
+      <div class="faq-a">The estimates are based on regional tourism data, property size, location and condition. They are indicative only — not a guarantee of income. Always verify with local market data and a licensed professional.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Where does the earthquake and tsunami data come from?</div>
+      <div class="faq-a">Earthquake events come from the U.S. Geological Survey (USGS). Tsunami history comes from NOAA's Global Historical Tsunami Database. Both are official, publicly available sources that we query live for each property location.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Is the yearly plan cheaper?</div>
+      <div class="faq-a">Yes — the yearly plan works out to about €6.60 per month, saving you 30% compared to the monthly plan. Payment is charged once per year.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I switch between monthly and yearly?</div>
+      <div class="faq-a">Yes. You can switch plans at any time from your account settings. If you switch to yearly mid-cycle, we'll prorate the remaining time.</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Subscribe anchor / contact -->
+<section class="cta" id="subscribe">
+  <div class="cta-inner">
+    <div style="font-size:36px;margin-bottom:12px">🏚</div>
+    <h2>Ready to start?</h2>
+    <p>Online payments are coming soon. In the meantime, reach out and we'll set you up manually.</p>
+    <a class="cta-btn" href="mailto:info@akiyasearch.com?subject=Pro subscription">Contact us to get Pro →</a>
+    <div class="cta-note">Or <a href="./search.html">keep browsing for free</a> — no account required.</div>
+  </div>
+</section>
+
+<footer>
+  <span class="footer-copy">© 2025 Akiya Search</span>
+  <div class="footer-links">
+    <a href="./privacy.html">Privacy</a>
+    <a href="./impressum.html">Impressum</a>
+    <a href="./search.html">Search</a>
+  </div>
+</footer>
+
+<script>
+const MONTHLY = { price: '€9', period: '/ month', note: '' };
+const YEARLY  = { price: '€79', period: '/ year', note: '≈ €6.60 / month — save 30%' };
+
+function switchBilling(yearly) {
+  const p = yearly ? YEARLY : MONTHLY;
+  document.getElementById('price-val').textContent    = p.price;
+  document.getElementById('price-period').textContent = p.period;
+  const noteEl = document.getElementById('price-note');
+  noteEl.textContent = p.note;
+  noteEl.style.visibility = p.note ? 'visible' : 'hidden';
+  document.getElementById('lbl-monthly').classList.toggle('active', !yearly);
+  document.getElementById('lbl-yearly').classList.toggle('active',  yearly);
+}
+switchBilling(false);
+</script>
+</body>
+</html>
