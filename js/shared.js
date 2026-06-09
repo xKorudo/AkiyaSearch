@@ -1444,6 +1444,65 @@ async function loadSwipes() {
   updateLikeCount();
 }
 
+// ── PULL-TO-REFRESH ───────────────────────────────────────────────────────────
+(function () {
+  const THRESHOLD = 72;
+  let startY = 0, pulling = false, ind = null;
+
+  function getScrollParent(el) {
+    while (el && el !== document.documentElement) {
+      const s = getComputedStyle(el);
+      if (/auto|scroll/.test(s.overflow + s.overflowY)) return el;
+      el = el.parentElement;
+    }
+    return document.documentElement;
+  }
+
+  function createIndicator() {
+    const d = document.createElement('div');
+    d.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-56px);z-index:99999;width:40px;height:40px;border-radius:50%;background:var(--surface2,#1e1e2e);box-shadow:0 2px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:none;pointer-events:none';
+    d.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent,#e8b86d)" stroke-width="2.2" stroke-linecap="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
+    document.body.appendChild(d);
+    return d;
+  }
+
+  document.addEventListener('touchstart', e => {
+    const sp = getScrollParent(e.target);
+    if (sp.scrollTop <= 0) {
+      startY = e.touches[0].clientY;
+      pulling = true;
+      if (!ind) ind = createIndicator();
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0) { pulling = false; ind.style.transform = 'translateX(-50%) translateY(-56px)'; ind.style.opacity = 0; return; }
+    const pct = Math.min(dy / THRESHOLD, 1);
+    const ty = Math.min(dy * 0.45, 52) - 56;
+    ind.style.transition = 'none';
+    ind.style.transform = `translateX(-50%) translateY(${ty}px) rotate(${pct * 270}deg)`;
+    ind.style.opacity = pct;
+  }, { passive: true });
+
+  document.addEventListener('touchend', e => {
+    if (!pulling) return;
+    pulling = false;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy >= THRESHOLD) {
+      ind.style.transition = 'transform .15s,opacity .15s';
+      ind.style.transform = 'translateX(-50%) translateY(12px) rotate(360deg)';
+      ind.style.opacity = '1';
+      setTimeout(() => location.reload(), 180);
+    } else {
+      ind.style.transition = 'transform .2s,opacity .2s';
+      ind.style.transform = 'translateX(-50%) translateY(-56px)';
+      ind.style.opacity = '0';
+    }
+  }, { passive: true });
+})();
+
 // ── DEMO DATA ─────────────────────────────────────────────────────────────────
 const DEMO_DATA = [
   {id:'d01',title:'50yr Old Kominka — Wood Stove Included',prefecture:'長野',city:'Komoro',price_jpy:1500000,price_label:'150万円',size_m2:120,land_m2:280,built_year:1972,rooms:'4LDK',condition:'要リフォーム',lat:36.33,lng:138.43,image_url:'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=500',source_url:'https://www.akiya2.com/prefecture-listing/Nagano',source:'Akiya2.com',description:'Traditional farmhouse surrounded by Nagano nature. Wood stove included, vegetable garden space. Renovation budget required.',tags:['古民家','長野','田舎暮らし','薪ストーブ']},
