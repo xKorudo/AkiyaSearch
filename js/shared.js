@@ -478,12 +478,32 @@ function toggleAuthMode() {
   const submit = document.getElementById('auth-submit');
   const switchText = document.getElementById('auth-switch-text');
   const switchLink = document.getElementById('auth-switch-link');
+  const forgot = document.getElementById('forgot-link');
   const msg = document.getElementById('auth-msg');
   if (title) title.textContent = signin ? 'Sign in' : 'Create account';
   if (submit) submit.textContent = signin ? 'Sign in' : 'Create account';
   if (switchText) switchText.textContent = signin ? 'No account?' : 'Have an account?';
   if (switchLink) switchLink.textContent = signin ? 'Create one' : 'Sign in';
+  if (forgot) forgot.parentElement.style.display = signin ? '' : 'none';
   if (msg) msg.textContent = '';
+}
+async function forgotPassword() {
+  const email = (document.getElementById('auth-email')?.value || '').trim();
+  const msg = document.getElementById('auth-msg');
+  if (!supa) { showToast('Login not configured'); return; }
+  if (!email) {
+    if (msg) { msg.className = 'auth-msg error'; msg.textContent = 'Enter your email address first.'; }
+    return;
+  }
+  if (msg) { msg.className = 'auth-msg'; msg.textContent = '…'; }
+  const { error } = await supa.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/reset-password.html',
+  });
+  if (error) {
+    if (msg) { msg.className = 'auth-msg error'; msg.textContent = error.message; }
+  } else {
+    if (msg) { msg.className = 'auth-msg ok'; msg.textContent = '✓ Reset link sent — check your inbox.'; }
+  }
 }
 async function submitAuth() {
   const emailEl = document.getElementById('auth-email');
