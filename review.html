@@ -61,12 +61,34 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     </div>
   </div>
 
+  <div class="card" style="margin-bottom:20px">
+    <div style="font-size:13px;font-weight:600;margin-bottom:12px">Bulk action — hide all listings by scraper</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <select id="bulk-scraper-source" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface3);color:var(--text1);font-family:var(--mono);font-size:13px;min-width:260px;">
+        <option>Loading…</option>
+      </select>
+      <button class="btn danger" onclick="bulkHideByScraper()">Hide all from this scraper</button>
+      <span id="bulk-scraper-status" style="font-size:12px;color:var(--text2);font-family:var(--mono)"></span>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">
+      OLD = no longer active pipeline (AKIYA BANK, Akiya2.com) · NEW = current pipeline (SUUMO, LIFULL Akiya Bank)
+    </div>
+  </div>
+
   <div id="reviews"><div class="empty">Loading…</div></div>
 </div>
 
 <script src="js/shared.js"></script>
 <script>
 let LMAP = {};
+
+// Which scrapers are old (no longer in active pipeline) vs new
+const SCRAPER_META = {
+  'AKIYA BANK':        { gen: 'old',  color: 'var(--red)'   },
+  'Akiya2.com':        { gen: 'old',  color: 'var(--red)'   },
+  'SUUMO':             { gen: 'new',  color: 'var(--green)'  },
+  'LIFULL Akiya Bank': { gen: 'new',  color: 'var(--green)'  },
+};
 
 window.addEventListener('DOMContentLoaded', async () => {
   await initAuth();
@@ -97,7 +119,25 @@ async function loadListingMap() {
       } catch {}
     }
     all.forEach(l => { LMAP[l.id] = l; });
+    populateScraperDropdown();
   } catch {}
+}
+
+function populateScraperDropdown() {
+  const counts = {};
+  Object.values(LMAP).forEach(l => {
+    const s = l.source || '(unknown)';
+    counts[s] = (counts[s] || 0) + 1;
+  });
+  const sel = document.getElementById('bulk-scraper-source');
+  if (!sel) return;
+  sel.innerHTML = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([src, n]) => {
+      const m = SCRAPER_META[src];
+      const tag = m ? (m.gen === 'old' ? ' [OLD]' : ' [NEW]') : '';
+      return `<option value="${src}">${src}${tag} — ${n} listings</option>`;
+    }).join('');
 }
 
 async function loadReviews() {
@@ -122,6 +162,13 @@ function fmtPrice(p) {
   return `¥${p.toLocaleString()}`;
 }
 
+function scraperBadge(source) {
+  const m = SCRAPER_META[source];
+  const color = m ? m.color : 'var(--text3)';
+  const tag   = m ? (m.gen === 'old' ? ' · OLD' : ' · NEW') : '';
+  return `<span style="font-family:var(--mono);font-size:10px;color:${color};border:1px solid ${color};border-radius:4px;padding:1px 6px;display:inline-block;margin-bottom:6px">${source || '?'}${tag}</span>`;
+}
+
 function renderCol(l) {
   if (!l) return '<div class="pair-col" style="opacity:.35;font-size:12px;color:var(--text3);display:flex;align-items:center;justify-content:center;">Not in current export</div>';
   const imgs = l.images || [];
@@ -130,12 +177,12 @@ function renderCol(l) {
     ${img
       ? `<img class="pair-img" src="${img}" loading="lazy" onerror="this.style.display='none'">`
       : '<div class="pair-img-empty"></div>'}
+    ${scraperBadge(l.source)}
     <div class="pair-title">${l.title_en || l.title || l.id}</div>
     <div class="pair-meta">
       <span>📍 ${[l.prefecture, l.city].filter(Boolean).join(' ')}</span>
       <span>💴 ${fmtPrice(l.price_jpy)}</span>
       <span>📐 ${l.size_m2 != null ? l.size_m2 + ' m²' : '—'}</span>
-      <span>🔗 ${l.source || ''}</span>
     </div>
     <a class="lnk" href="listing.html?id=${encodeURIComponent(l.id)}" target="_blank">Open listing ↗</a>
   </div>`;
@@ -185,6 +232,28 @@ async function hideOne(listingId, reviewId) {
   const { error } = await adminSetHidden(listingId, true);
   if (error) { showToast('⚠ Could not hide: ' + error.message); return; }
   if (await _resolveReview(reviewId, 'resolved')) showToast('Listing hidden');
+}
+
+async function bulkHideByScraper() {
+  const source = document.getElementById('bulk-scraper-source').value;
+  const status = document.getElementById('bulk-scraper-status');
+  if (!source || source === 'Loading…') { showToast('No scraper selected'); return; }
+
+  const ids = Object.values(LMAP).filter(l => l.source === source).map(l => l.id);
+  if (!ids.length) { showToast('No listings found for that scraper'); return; }
+
+  const confirmed = confirm(`Hide all ${ids.length} listings from "${source}"?\nThis cannot be undone easily.`);
+  if (!confirmed) return;
+
+  let done = 0, failed = 0;
+  status.textContent = `0 / ${ids.length}…`;
+  for (const id of ids) {
+    const { error } = await adminSetHidden(id, true);
+    if (error) { failed++; } else { done++; }
+    if ((done + failed) % 10 === 0) status.textContent = `${done + failed} / ${ids.length}…`;
+  }
+  status.textContent = `Done: ${done} hidden${failed ? ', ' + failed + ' failed' : ''}`;
+  showToast(`Bulk hide complete — ${done} listings from "${source}" hidden`);
 }
 
 async function bulkHide() {
