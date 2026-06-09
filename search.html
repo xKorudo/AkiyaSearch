@@ -213,32 +213,38 @@ let activeTags = new Set();
 let activeSection = 'search';
 
 // ── STATE SAVE / RESTORE (back-navigation) ────────────────────────────────────
+// Uses localStorage (shared across tabs) so state survives target="_blank" tabs.
+// Expires after 1 hour so stale filters don't resurface unexpectedly.
 const _SS_KEY = 'akiya_search_state';
+const _SS_TTL = 60 * 60 * 1000; // 1 hour
 
 function saveSearchState() {
   try {
-    sessionStorage.setItem(_SS_KEY, JSON.stringify({
-      q:         document.getElementById('q')?.value || '',
-      pref:      document.getElementById('pref-select')?.value || '',
-      sort:      document.getElementById('sort-select')?.value || '',
-      source:    document.getElementById('source-select')?.value || '',
-      seismic:   document.getElementById('seismic-select')?.value || '',
-      priceMin:  document.getElementById('price-min')?.value || '',
-      priceMax:  document.getElementById('price-max')?.value || '',
-      tags:      [...activeTags],
+    localStorage.setItem(_SS_KEY, JSON.stringify({
+      q:          document.getElementById('q')?.value || '',
+      pref:       document.getElementById('pref-select')?.value || '',
+      sort:       document.getElementById('sort-select')?.value || '',
+      source:     document.getElementById('source-select')?.value || '',
+      seismic:    document.getElementById('seismic-select')?.value || '',
+      priceMin:   document.getElementById('price-min')?.value || '',
+      priceMax:   document.getElementById('price-max')?.value || '',
+      tags:       [...activeTags],
       filterOpen: document.getElementById('filter-panel')?.classList.contains('open') || false,
-      scroll:    document.getElementById('listings-list')?.scrollTop || 0,
-      rendered:  renderedCount,
+      scroll:     document.getElementById('listings-list')?.scrollTop || 0,
+      rendered:   renderedCount,
+      savedAt:    Date.now(),
     }));
   } catch {}
 }
 
 function _restoreSearchState() {
   try {
-    const raw = sessionStorage.getItem(_SS_KEY);
+    const raw = localStorage.getItem(_SS_KEY);
     if (!raw) return null;
-    sessionStorage.removeItem(_SS_KEY);
-    return JSON.parse(raw);
+    const state = JSON.parse(raw);
+    if (Date.now() - (state.savedAt || 0) > _SS_TTL) { localStorage.removeItem(_SS_KEY); return null; }
+    localStorage.removeItem(_SS_KEY);
+    return state;
   } catch { return null; }
 }
 
