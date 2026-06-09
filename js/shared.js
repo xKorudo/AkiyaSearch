@@ -1467,6 +1467,8 @@ async function loadSwipes() {
   }
 
   document.addEventListener('touchstart', e => {
+    const mapEl = document.getElementById('map');
+    if (mapEl && mapEl.contains(e.target)) return;
     const sp = getScrollParent(e.target);
     if (sp.scrollTop <= 0) {
       startY = e.touches[0].clientY;
