@@ -17,7 +17,7 @@
   --r: 8px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; max-width: 100%; overflow-x: hidden; }
 body {
   font-family: var(--sans);
   background: var(--bg);
@@ -295,4 +295,20 @@ footer {
   .feat-sub { display: none; }
 
   .recent-grid { grid-template-columns: 1fr; }
+  .topref-grid { grid-template-columns: repeat(2, 1fr); }
+  .features, .recent, .topref-section { padding-left: 16px; padding-right: 16px; }
+}
+
+@media (max-width: 360px) {
+  header { padding: 0 10px; gap: 6px; }
+  .logo-jp { display: none; }
+  .hero { padding: 60px 12px 28px; }
+  h1 { font-size: 26px; }
+  .hero-stats { gap: 20px; }
+  .stat-num { font-size: 20px; }
+  .feature-btns { gap: 10px; }
+  .feat-btn { padding: 10px 12px; }
+  .topref-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .features, .recent, .topref-section { padding-left: 12px; padding-right: 12px; }
+  footer { padding: 16px 12px; }
 }
