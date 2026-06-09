@@ -64,10 +64,34 @@ function _sid(){ try{ let s=sessionStorage.getItem('akiya_sid'); if(!s){s=Math.r
 function track(name, meta){ try{ const row={session_id:_sid(),name,page:'listing',meta:meta||null}; if(name==='page_view'){try{row.ref=document.referrer?new URL(document.referrer).hostname:null;}catch{}} fetch(`${SUPABASE_URL}/rest/v1/events`,{method:'POST',keepalive:true,headers:{apikey:SUPABASE_ANON_KEY,Authorization:'Bearer '+SUPABASE_ANON_KEY,'Content-Type':'application/json'},body:JSON.stringify(row)}); }catch{} }
 track('page_view');
 
-let _imgs=[],_idx=0;
+let _imgs=[],_idx=0,_carIdx=0;
 function lbOpen(i){_idx=i;document.getElementById('lb-img').src=bigImg(_imgs[_idx]);document.getElementById('lb').classList.add('open');}
 function lbClose(){document.getElementById('lb').classList.remove('open');}
 function lbNav(d){_idx=(_idx+d+_imgs.length)%_imgs.length;document.getElementById('lb-img').src=bigImg(_imgs[_idx]);}
+function carNav(d){_carIdx=(_carIdx+d+_imgs.length)%_imgs.length;updateCarousel();}
+function updateCarousel(){
+  const t=document.getElementById('car-track');if(!t)return;
+  t.style.transform=`translateX(-${_carIdx*100}%)`;
+  document.querySelectorAll('.car-dot').forEach((d,i)=>d.classList.toggle('active',i===_carIdx));
+}
+function initCarousel(){
+  const el=document.getElementById('carousel');if(!el||_imgs.length<2)return;
+  let sx=0,sy=0;
+  el.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  el.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>36)carNav(dx<0?1:-1);
+  },{passive:true});
+}
+// Lightbox swipe
+(function(){let sx=0,sy=0;
+  const lb=document.getElementById('lb');
+  lb.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+  lb.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>36)lbNav(dx<0?1:-1);
+  },{passive:true});
+})();
 
 // ── auth + favorites + watchlists (shares the same Supabase session) ──
 let supa=null,currentUser=null,FAVS=new Set(),WATCHLISTS=[],CURRENT=null;
@@ -190,10 +214,16 @@ function render(l){
   const ab=calcAirbnb(l),abc=airbnbColor(ab),s=seismicInfo(l.built_year),rk=riskLevel(l),v=airbnbVerdict(l);
   const prefEN=prefToEN(l.prefecture);
 
+  _carIdx=0;
   let gallery;
-  if(!_imgs.length)gallery='<div class="ph">家</div>';
-  else if(_imgs.length===1)gallery=`<img class="ph" style="cursor:zoom-in;aspect-ratio:16/9;object-fit:cover" src="${bigImg(_imgs[0])}" onclick="lbOpen(0)">`;
-  else gallery=`<div class="gallery"><img class="main" src="${bigImg(_imgs[0])}" onclick="lbOpen(0)">`+_imgs.slice(1,7).map((u,i)=>`<img src="${u}" onclick="lbOpen(${i+1})">`).join('')+`</div>`;
+  if(!_imgs.length){
+    gallery='<div class="ph">家</div>';
+  } else {
+    const track=_imgs.map((u,i)=>`<img src="${bigImg(u)}" onclick="lbOpen(${i})" loading="${i===0?'eager':'lazy'}">`).join('');
+    const dots=_imgs.length>1?`<div class="car-dots">${_imgs.map((_,i)=>`<span class="car-dot${i===0?' active':''}"></span>`).join('')}</div>`:'';
+    const arrows=_imgs.length>1?`<span class="car-nav car-prev" onclick="carNav(-1)">‹</span><span class="car-nav car-next" onclick="carNav(1)">›</span>`:'';
+    gallery=`<div class="carousel" id="carousel"><div class="car-track" id="car-track">${track}</div>${dots}${arrows}</div>`;
+  }
 
   let price;
   if(l.price_jpy===0)price='<span class="price-jpy" style="color:var(--green)">FREE — 無償譲渡</span>';
@@ -264,6 +294,7 @@ function render(l){
   }
   renderActions(l);
   renderHazards(l);
+  initCarousel();
   const aside=document.getElementById('hazard-aside');
   if(aside) aside.insertAdjacentHTML('beforeend', prefBoxHTML(l));
 }
