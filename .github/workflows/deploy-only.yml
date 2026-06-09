@@ -6,10 +6,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: akiya-pipeline
-  cancel-in-progress: false
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
