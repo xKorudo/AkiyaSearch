@@ -71,7 +71,8 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
       <span id="bulk-scraper-status" style="font-size:12px;color:var(--text2);font-family:var(--mono)"></span>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:8px">
-      OLD = no longer active pipeline (AKIYA BANK, Akiya2.com) · NEW = current pipeline (SUUMO, LIFULL Akiya Bank)
+      <span style="color:var(--red)">OLD</span> = inactive pipeline — <strong>Akiya2.com</strong> (SUUMO scraped indirectly via akiya2.com), <strong>AKIYA BANK</strong> (akiyabank.jp direct) ·
+      <span style="color:var(--green)">NEW</span> = active pipeline — <strong>SUUMO</strong> (homes.co.jp direct), <strong>LIFULL Akiya Bank</strong>
     </div>
   </div>
 
@@ -84,10 +85,10 @@ let LMAP = {};
 
 // Which scrapers are old (no longer in active pipeline) vs new
 const SCRAPER_META = {
-  'AKIYA BANK':        { gen: 'old',  color: 'var(--red)'   },
-  'Akiya2.com':        { gen: 'old',  color: 'var(--red)'   },
-  'SUUMO':             { gen: 'new',  color: 'var(--green)'  },
-  'LIFULL Akiya Bank': { gen: 'new',  color: 'var(--green)'  },
+  'AKIYA BANK':        { gen: 'old',  color: 'var(--red)',    note: 'akiyabank.jp direct'          },
+  'Akiya2.com':        { gen: 'old',  color: 'var(--red)',    note: 'SUUMO scraped via akiya2.com'  },
+  'SUUMO':             { gen: 'new',  color: 'var(--green)',  note: 'homes.co.jp direct'            },
+  'LIFULL Akiya Bank': { gen: 'new',  color: 'var(--green)',  note: 'LIFULL Akiya Bank direct'      },
 };
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -135,8 +136,9 @@ function populateScraperDropdown() {
     .sort((a, b) => b[1] - a[1])
     .map(([src, n]) => {
       const m = SCRAPER_META[src];
-      const tag = m ? (m.gen === 'old' ? ' [OLD]' : ' [NEW]') : '';
-      return `<option value="${src}">${src}${tag} — ${n} listings</option>`;
+      const tag  = m ? (m.gen === 'old' ? ' [OLD]' : ' [NEW]') : '';
+      const note = m?.note ? ` (${m.note})` : '';
+      return `<option value="${src}">${src}${tag}${note} — ${n} listings</option>`;
     }).join('');
 }
 
