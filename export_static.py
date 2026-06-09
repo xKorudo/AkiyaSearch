@@ -132,6 +132,11 @@ def main():
         with open(os.path.join(OUT, f"listings-{idx}.json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)
 
+    for fname in ["manifest.json"]:
+        src = os.path.join(ROOT, fname)
+        if os.path.exists(src):
+            shutil.copyfile(src, os.path.join(OUT, fname))
+
     static_files = [
         "index.html",
         "search.html",
@@ -153,7 +158,7 @@ def main():
         if os.path.exists(src):
             shutil.copyfile(src, os.path.join(OUT, fname))
 
-    for subdir in ["js", "css", "data"]:
+    for subdir in ["js", "css", "data", "icons"]:
         src_dir = os.path.join(ROOT, subdir)
         dst_dir = os.path.join(OUT, subdir)
         if os.path.isdir(src_dir):

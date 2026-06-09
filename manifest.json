@@ -1,0 +1,24 @@
+{
+  "name": "Akiya Search 空き家",
+  "short_name": "Akiya Search",
+  "description": "Browse 26,000+ vacant Japanese properties. Filter by prefecture, price, size and more.",
+  "start_url": "/search.html",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#0f0f1a",
+  "background_color": "#0f0f1a",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
