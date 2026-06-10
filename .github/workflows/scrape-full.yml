@@ -1,0 +1,81 @@
+name: Full scrape (single-pass, all data)
+
+# Visits SUUMO detail pages directly via Playwright and saves every field
+# (price, areas, address, built year, listed_at, description, traffic, full
+# gallery) in a single pass.  No backfill needed.
+#
+# Runs 150 listings per invocation.  Progress is checkpointed per prefecture
+# so successive runs continue where the previous one stopped and eventually
+# cover all 47 prefectures completely.
+
+on:
+  schedule:
+    - cron: "20 1-23/4 * * *"   # every 4h at :20 — offset from scrape-and-deploy (:40)
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max listings per run"
+        default: "150"
+      pref:
+        description: "Optional: single prefecture (e.g. 東京)"
+        default: ""
+
+# Share the pipeline concurrency group so this never runs at the same time as
+# the regular scraper or backfill jobs (avoids DB cache conflicts + IP sharing).
+concurrency:
+  group: akiya-pipeline
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  scrape-full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      - name: Restore listings DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            akiya_v4.db
+            geocache.json
+          key: akiya-db-${{ github.run_id }}
+          restore-keys: |
+            akiya-db-
+
+      - name: Run full detail scraper
+        run: |
+          LIMIT="${{ github.event.inputs.limit || '150' }}"
+          PREF="${{ github.event.inputs.pref || '' }}"
+          if [ -n "$PREF" ]; then
+            python scrapers/suumo_full.py --limit "$LIMIT" --pref "$PREF"
+          else
+            python scrapers/suumo_full.py --limit "$LIMIT"
+          fi
+
+      - name: Build static snapshot
+        run: python export_static.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public --project-name=akiya-finder --branch main

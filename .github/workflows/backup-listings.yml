@@ -1,0 +1,45 @@
+name: Backup listings snapshot
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download live listings from Cloudflare Pages
+        run: |
+          mkdir -p backup
+          BASE="https://akiya-finder-159.pages.dev"
+
+          curl -fsSL "$BASE/listings-0.json" -o backup/listings-0.json
+          CHUNKS=$(python3 -c "import json; print(json.load(open('backup/listings-0.json')).get('chunks', 1))")
+          COUNT=$(python3 -c  "import json; print(json.load(open('backup/listings-0.json')).get('count',  0))")
+          echo "Chunks: $CHUNKS   Listings: $COUNT"
+
+          for i in $(seq 1 $((CHUNKS - 1))); do
+            curl -fsSL "$BASE/listings-$i.json" -o "backup/listings-$i.json"
+          done
+
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          python3 -c "
+          import json
+          json.dump({'date':'$DATE','chunks':$CHUNKS,'count':$COUNT},
+                    open('backup/manifest.json','w'), indent=2)
+          "
+          echo "Done — $COUNT listings backed up in $CHUNKS chunk(s)"
+
+      - name: Commit backup
+        run: |
+          git config user.name  "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add backup/
+          git diff --cached --quiet && echo "Nothing changed" && exit 0
+          COUNT=$(python3 -c "import json; print(json.load(open('backup/manifest.json'))['count'])")
+          git commit -m "Backup listings snapshot $(date -u +%Y-%m-%d) — $COUNT listings"
+          git push
