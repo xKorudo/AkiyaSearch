@@ -31,21 +31,16 @@ def init_db():
         condition TEXT,
         images TEXT,
         traffic TEXT DEFAULT '',
-        first_seen TEXT DEFAULT ''
+        first_seen TEXT DEFAULT '',
+        listed_at TEXT
     )
     """)
 
-    # Migration: add traffic column to existing DBs
-    try:
-        c.execute("ALTER TABLE listings ADD COLUMN traffic TEXT DEFAULT ''")
-    except Exception:
-        pass  # column already exists
-
-    # Migration: add first_seen column to existing DBs
-    try:
-        c.execute("ALTER TABLE listings ADD COLUMN first_seen TEXT DEFAULT ''")
-    except Exception:
-        pass  # column already exists
+    for col, defval in [("traffic", "''"), ("first_seen", "''"), ("listed_at", "NULL")]:
+        try:
+            c.execute(f"ALTER TABLE listings ADD COLUMN {col} TEXT DEFAULT {defval}")
+        except Exception:
+            pass  # column already exists
 
     # Scrape state table (deep-mode cursors etc.)
     c.execute("""
@@ -204,8 +199,7 @@ def upsert(listing):
     c = conn.cursor()
 
     # Stable dedup: if this source_url already exists under a different id
-    # (e.g. SUUMO changed the title prefix), adopt the existing id and delete
-    # any extra duplicates so we update in-place instead of creating a new row.
+    # (e.g. SUUMO changed the title prefix), adopt the existing id.
     try:
         dup = c.execute(
             "SELECT id FROM listings WHERE source_url=? AND id!=? LIMIT 1",
@@ -219,19 +213,18 @@ def upsert(listing):
             )
     except Exception:
         pass
-
-    # Don't let a re-scrape downgrade a backfilled gallery: if the stored row
-    # already has MORE images than this scrape's (list-page) set, keep the
-    # richer existing gallery + its lead image.
     try:
-        row = c.execute("SELECT images, image_url FROM listings WHERE id=?", (listing.id,)).fetchone()
-        if row and row[0]:
-            existing = json.loads(row[0])
-            incoming = json.loads(listing.images) if listing.images else []
-            if len(existing) > len(incoming):
-                listing.images = row[0]
-                if existing:
-                    listing.image_url = existing[0]
+        row = c.execute("SELECT images, image_url, listed_at FROM listings WHERE id=?", (listing.id,)).fetchone()
+        if row:
+            if row[0]:
+                existing = json.loads(row[0])
+                incoming = json.loads(listing.images) if listing.images else []
+                if len(existing) > len(incoming):
+                    listing.images = row[0]
+                    if existing:
+                        listing.image_url = existing[0]
+            if row[2] and not listing.listed_at:
+                listing.listed_at = row[2]
     except Exception:
         pass
 
@@ -257,7 +250,7 @@ def upsert(listing):
             listing.first_seen = datetime.date.today().isoformat()
 
     c.execute("""
-    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
         listing.id,
         listing.title,
@@ -281,7 +274,19 @@ def upsert(listing):
         listing.images,
         listing.traffic,
         listing.first_seen,
+        listing.listed_at,
     ))
 
+    conn.commit()
+    conn.close()
+
+
+def update_listed_at(listing_id, date_str):
+    """Set listed_at only if not already stored (preserve original SUUMO publish date)."""
+    conn = sqlite3.connect(DB)
+    conn.execute(
+        "UPDATE listings SET listed_at=? WHERE id=? AND listed_at IS NULL",
+        (date_str, listing_id),
+    )
     conn.commit()
     conn.close()

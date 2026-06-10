@@ -24,8 +24,8 @@ try:
 except Exception:
     pass
 
-from db.database import init_db, listings_needing_images, update_images, update_detail_fields
-init_db()  # ensure traffic column exists on cached DBs that predate the migration
+from db.database import init_db, listings_needing_images, update_images, update_detail_fields, update_listed_at
+init_db()  # ensure all columns exist on cached DBs
 
 BATCH = 60
 
@@ -61,16 +61,12 @@ def extract_detail_fields(page):
     () => {
       let traffic = '';
       let description = '';
-
-      // 交通: find the <th> or <dt> labelled 交通 and grab its sibling value
       for (const th of document.querySelectorAll('th, dt')) {
         if (th.textContent.trim() === '交通') {
           const td = th.nextElementSibling;
           if (td) { traffic = td.innerText.trim().slice(0, 400); break; }
         }
       }
-
-      // 物件の特徴・おすすめポイント — try common SUUMO detail-page selectors
       for (const sel of [
         '.detail-box__text',
         '[class*="bukkenDetail-appeal"]',
@@ -83,10 +79,22 @@ def extract_detail_fields(page):
           break;
         }
       }
-
       return { traffic, description };
     }
     """)
+
+
+def extract_listed_at(page):
+    """Extract 情報提供日 from a SUUMO detail page, returns 'YYYY-MM-DD' or None."""
+    try:
+        return page.evaluate("""() => {
+            const text = document.body ? document.body.innerText : '';
+            const m = text.match(/情報提供日[：:＊ ]*(\d{4})年(\d{1,2})月(\d{1,2})日/);
+            if (m) return m[1] + '-' + String(m[2]).padStart(2,'0') + '-' + String(m[3]).padStart(2,'0');
+            return null;
+        }""")
+    except Exception:
+        return None
 
 
 def main():
@@ -120,11 +128,13 @@ def main():
             m = re.search(r"nc_(\d+)", url)
             bid = m.group(1) if m else ""
             try:
-                imgs = extract_images(page, url, bid)  # page already loaded by extract_images
-                fields = extract_detail_fields(page)   # free — page is already there
+                imgs = extract_images(page, url, bid)
+                fields = extract_detail_fields(page)
+                listed_at = extract_listed_at(page)
             except Exception:
                 imgs = None
                 fields = {}
+                listed_at = None
 
             if not imgs:
                 fails += 1
@@ -139,8 +149,11 @@ def main():
             update_images(lid, json.dumps(imgs), first_image=imgs[0])
             if fields.get("traffic") or fields.get("description"):
                 update_detail_fields(lid, fields.get("traffic"), fields.get("description"))
+            if listed_at:
+                update_listed_at(lid, listed_at)
             done += 1
-            print(f"  [{i}/{len(img_todo)}] {len(imgs)} photos  traffic={'✓' if fields.get('traffic') else '—'}  <- {url[:50]}", flush=True)
+            date_note = f"  listed={listed_at}" if listed_at else ""
+            print(f"  [{i}/{len(img_todo)}] {len(imgs)} photos  traffic={'✓' if fields.get('traffic') else '—'}{date_note}  <- {url[:50]}", flush=True)
             time.sleep(random.uniform(2, 4))
 
         browser.close()

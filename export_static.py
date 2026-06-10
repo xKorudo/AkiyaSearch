@@ -26,7 +26,7 @@ COLUMNS = [
     "id", "title", "prefecture", "city", "price_jpy", "price_label",
     "size_m2", "land_m2", "image_url", "source_url", "source", "description",
     "title_en", "description_en", "lat", "lng", "rooms", "built_year",
-    "condition", "images", "traffic", "first_seen",
+    "condition", "images", "traffic", "first_seen", "listed_at",
 ]
 
 

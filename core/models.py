@@ -23,6 +23,6 @@ class Listing:
     built_year: Optional[int] = None
     condition: str = ""
     images: str = ""   # JSON array of image URLs
-    traffic: str = ""  # nearest transit lines (交通)
-    first_seen: str = ""  # ISO date when first scraped (YYYY-MM-DD)
-
+    traffic: str = ""
+    first_seen: str = ""
+    listed_at: Optional[str] = None  # SUUMO 情報提供日 as YYYY-MM-DD
