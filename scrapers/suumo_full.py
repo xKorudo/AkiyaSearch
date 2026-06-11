@@ -195,7 +195,12 @@ _EXTRACT_JS = """
     const rows = {};
 
     function add(key, val) {
-        if (key && val) rows[key] = val.replace(/\\s*地図\\s*.*$/, '').trim().replace(/\\s+/g, ' ');
+        // Strip SUUMO's tooltip suffix "ヒント" and trailing colons (full-width ： or half-width :)
+        // from every th label before storing, so lookups work without knowing these suffixes.
+        // e.g. "構造・工法 ヒント" → "構造・工法", "免許番号：" → "免許番号"
+        const cleanKey = key.replace(/\\s*ヒント$/, '').replace(/[：:]+\\s*$/, '').trim();
+        const cleanVal = val.replace(/\\s*地図\\s*.*$/, '').trim().replace(/\\s+/g, ' ');
+        if (cleanKey && cleanVal) rows[cleanKey] = cleanVal;
     }
 
     // Layout 1: same-row th/td pairs — pair ths[i] → tds[i] within each tr
@@ -303,9 +308,6 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     title       = data.get("title", "") or ""
     description = data.get("description", "") or ""
 
-    # DEBUG — print every extracted key so we can audit missing fields
-    print(f"    ROWS KEYS: {sorted(rows.keys())}", flush=True)
-
     # ---- Price ----
     price_text  = rows.get("販売価格") or rows.get("価格") or ""
     pm          = re.search(r"([\d,]+(?:\.\d+)?)\s*万円", price_text)
@@ -332,7 +334,7 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     # SUUMO stores dates as western year ("2012年") OR Japanese era year ("平成23年").
     _ERA_BASE = {"明治": 1868, "大正": 1912, "昭和": 1926, "平成": 1989, "令和": 2019}
     built_year = None
-    for _bk in ("築年月", "建築年月", "築年"):
+    for _bk in ("築年月", "完成時期(築年月)", "完成時期（築年月）", "建築年月", "築年"):
         _raw = rows.get(_bk, "")
         if not _raw:
             continue
