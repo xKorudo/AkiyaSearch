@@ -267,6 +267,26 @@ def _set_cursor(pref: str, page: int):
         pass
 
 
+def _get_existing_next_updates(urls: list) -> dict:
+    """Return {url: next_update_str} for URLs already in the DB that have a
+    next_update date stored.  Used to skip re-scraping before SUUMO's own
+    scheduled refresh date."""
+    if not urls:
+        return {}
+    ids_map = {hashlib.md5(u.encode()).hexdigest(): u for u in urls}
+    try:
+        conn = sqlite3.connect(DB)
+        ph = ",".join("?" * len(ids_map))
+        rows = conn.execute(
+            f"SELECT id, next_update FROM listings WHERE id IN ({ph})",
+            list(ids_map.keys()),
+        ).fetchall()
+        conn.close()
+        return {ids_map[r[0]]: r[1] for r in rows if r[0] in ids_map and r[1]}
+    except Exception:
+        return {}
+
+
 # ---------------------------------------------------------------------------
 # List-page fetch (plain HTTP — no JS needed for pagination)
 # ---------------------------------------------------------------------------
@@ -489,6 +509,16 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     if ldm:
         listed_at = f"{ldm.group(1)}-{ldm.group(2).zfill(2)}-{ldm.group(3).zfill(2)}"
 
+    # ---- Next scheduled update date (次回更新予定日) ----
+    next_update = ""
+    for _nk in ("次回更新予定日", "次回更新日", "更新日"):
+        _raw = rows.get(_nk, "")
+        if _raw:
+            ndm = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", _raw)
+            if ndm:
+                next_update = f"{ndm.group(1)}-{ndm.group(2).zfill(2)}-{ndm.group(3).zfill(2)}"
+                break
+
     # ---- Traffic ----
     traffic = rows.get("交通", "")[:400]
 
@@ -611,6 +641,7 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
         surroundings=surroundings,
         agent_company=agent_company,
         agent_license=agent_license,
+        next_update=next_update,
     )
 
 
@@ -683,11 +714,26 @@ def main():
 
                 print(f"  [{pref_jp}] p{page_num}: {len(detail_urls)} URLs", flush=True)
 
+                # Batch-check which URLs are already fresh (next_update in future)
+                existing_updates = _get_existing_next_updates(detail_urls)
+                today = datetime.date.today()
+
                 for url in detail_urls:
                     if pref_saved >= args.limit:
                         break
                     if args.max_total and total_saved >= args.max_total:
                         break
+
+                    # Skip if SUUMO's scheduled update date hasn't arrived yet.
+                    # Allow a 1-day grace window so day-of and day-after both hit.
+                    _nu = existing_updates.get(url)
+                    if _nu:
+                        try:
+                            if today < datetime.date.fromisoformat(_nu) - datetime.timedelta(days=1):
+                                print(f"    skip — next update {_nu}", flush=True)
+                                continue
+                        except Exception:
+                            pass  # malformed date → re-scrape
 
                     listing = _scrape_detail(pw_page, url, pref_jp)
 
