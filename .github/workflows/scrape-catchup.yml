@@ -1,0 +1,150 @@
+name: Catch-up scrape (blocked prefectures)
+
+# Targets the 19 prefectures that consistently get bot-blocked in the main
+# matrix run (all stuck at ~9 listings = 1 page).  Runs with max-parallel 4
+# and a longer random stagger so SUUMO never sees more than 4 simultaneous
+# requests from this workflow.
+#
+# Scheduled at :30 past odd hours (between the main 2-hour matrix runs) so
+# the two workflows never overlap.
+
+on:
+  schedule:
+    - cron: "30 1,3,5,7,9,11,13,15,17,19,21,23 * * *"   # :30 past every odd hour
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max listings per prefecture"
+        default: "300"
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Per-prefecture scrape ────────────────────────────────────────────────
+  scrape:
+    name: "Catch-up ${{ matrix.pref }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4      # low parallelism — avoid SUUMO burst detection
+      matrix:
+        pref:
+          - 新潟
+          - 富山
+          - 石川
+          - 福井
+          - 山梨
+          - 長野
+          - 岐阜
+          - 静岡
+          - 愛知
+          - 三重
+          - 鳥取
+          - 島根
+          - 岡山
+          - 広島
+          - 山口
+          - 徳島
+          - 香川
+          - 愛媛
+          - 高知
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      # Separate cache namespace from the main matrix so the two workflows
+      # don't overwrite each other's checkpoints.
+      - name: Restore prefecture DB
+        uses: actions/cache@v4
+        with:
+          path: akiya_v4.db
+          key: akiya-catchup-${{ matrix.pref }}-db1-${{ github.run_id }}
+          restore-keys: |
+            akiya-catchup-${{ matrix.pref }}-db1-
+
+      # Longer stagger (0–120 s) so that with max-parallel 4 the actual
+      # request bursts are spread across 2 minutes instead of landing at once.
+      - name: Stagger start
+        run: sleep $((RANDOM % 120))
+
+      - name: Scrape ${{ matrix.pref }}
+        run: |
+          python scrapers/suumo_full.py \
+            --limit "${{ github.event.inputs.limit || '300' }}" \
+            --pref "${{ matrix.pref }}"
+
+      - name: Upload prefecture DB
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-catchup-${{ matrix.pref }}
+          path: akiya_v4.db
+          retention-days: 1
+          if-no-files-found: ignore
+
+  # ── Merge + deploy ───────────────────────────────────────────────────────
+  deploy:
+    name: Merge & Deploy
+    needs: scrape
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore master DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            akiya_v4.db
+            geocache.json
+          key: akiya-catchup-master-db1-${{ github.run_id }}
+          restore-keys: |
+            akiya-catchup-master-db1-
+
+      - name: Download all catchup DBs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: db-catchup-*
+          path: pref_dbs/
+
+      - name: Merge prefecture DBs into master
+        run: python scripts/merge_dbs.py pref_dbs/
+
+      - name: Geocode listings to real towns
+        run: python enrich_geo.py
+        continue-on-error: true
+
+      - name: Build static snapshot
+        run: python export_static.py
+        env:
+          ALLOW_SHRINK: "1"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public --project-name=akiya-finder --branch main
