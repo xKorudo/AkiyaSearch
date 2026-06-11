@@ -101,6 +101,9 @@ jobs:
           restore-keys: |
             akiya-matrix-${{ matrix.pref }}-db1-
 
+      - name: Stagger start
+        run: sleep $((RANDOM % 90))
+
       - name: Scrape ${{ matrix.pref }}
         run: |
           python scrapers/suumo_full.py \
