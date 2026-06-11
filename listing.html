@@ -294,7 +294,7 @@ function render(l){
     ['Land Category',    l.land_category],
     ['Coverage / FAR',   l.building_ratio],
     ['Sale Area',        l.transaction_area],
-    ['Road Access',      l.private_road],
+    ['Private Road',     l.private_road],
     ['Handover Date',    l.handover_date],
     ['Restrictions',     l.other_restrictions],
   ].filter(([,v])=>v&&v.trim());
@@ -429,10 +429,9 @@ function render(l){
     <div class="specs">${specs}</div>
     ${propDetailsHTML}
 
-    ${l.traffic ? `<div class="sec-title">Transit access</div>
-    <div class="card" style="padding:12px 16px;margin-bottom:16px"><div style="font-family:var(--mono);font-size:13px;color:var(--text2);line-height:1.9">${l.traffic.split('\n').filter(Boolean).map(t=>'🚉 '+t.trim()).join('<br>')}</div></div>` : ''}
+    ${l.traffic ? `<div class="sec-title">Transit Access</div>
+    <div class="card" style="padding:0;overflow:hidden"><div class="pd-grid">${l.traffic.split('\n').filter(Boolean).map(t=>`<div class="pd-row"><div class="pd-label" style="min-width:20px">🚉</div><div class="pd-val">${t.trim()}</div></div>`).join('')}</div></div>` : ''}
     ${amenitiesHTML}
-    ${otherInfoHTML}
     ${surroundingsHTML}
 
     <div class="sec-title">Building — seismic standard</div>
