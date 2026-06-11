@@ -58,7 +58,7 @@ const prefToEN=p=>PREF_EN[p]||p||'Japan';
 const conditionEN=c=>COND_EN[c]||c||'';
 function fmtYen(j){if(j>=1e8)return'¥'+(j/1e8).toLocaleString('de-DE',{maximumFractionDigits:1})+' Mrd.';if(j>=1e7)return'¥'+(j/1e6).toLocaleString('de-DE',{maximumFractionDigits:1})+' Mio.';if(j>=1e6)return'¥'+(j/1e6).toLocaleString('de-DE',{maximumFractionDigits:2})+' Mio.';return'¥'+j.toLocaleString('de-DE');}
 function convPrice(j){if(j==null)return'';if(userCurrency==='JPY')return'¥'+Math.round(j).toLocaleString('de-DE');return CUR_SYMBOL[userCurrency]+Math.round(j*FX[userCurrency]).toLocaleString('de-DE');}
-function gmapsUrl(l){if(l.lat&&l.lng)return'https://www.google.com/maps/search/?api=1&query='+l.lat+','+l.lng;const hasJp=l.title&&/[　-鿿]/.test(l.title);const addr=hasJp?l.title:(l.prefecture||'')+(l.city||'');return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr+' 日本');}
+function gmapsUrl(l){const city=(l.city||'').trim(),pref=(l.prefecture||'').trim();if(city){let pf=pref;if(pref==='東京')pf='東京都';else if(pref==='大阪'||pref==='京都')pf=pref+'府';else if(pref!=='北海道'&&pref)pf=pref+'県';return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(pf+city+' 日本');}if(l.lat&&l.lng)return'https://www.google.com/maps/search/?api=1&query='+l.lat+','+l.lng;const hasJp=l.title&&/[　-鿿]/.test(l.title);const addr=hasJp?l.title:pref;return'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr+' 日本');}
 function bigImg(u){return u&&(u.includes('resizeImage')||u.includes('w='))?u.replace(/([?&])w=\d+/i,'$1w=1200').replace(/([?&])h=\d+/i,'$1h=900'):u;}
 function disclaimerHTML(){return `<div class="disclaimer" style="margin-top:18px;padding:11px 13px;background:rgba(232,160,32,.06);border:1px solid var(--border2);border-left:3px solid var(--accent);border-radius:6px;font-size:11px;line-height:1.6;color:var(--text2)">⚠ <strong style="color:var(--text)">Disclaimer:</strong> Listings are aggregated automatically from third-party sources (SUUMO, LIFULL Akiya Bank and others). Details such as the address, location, price, size, build year, photos and availability may be inaccurate, incomplete, outdated or already sold, and translations are machine-generated. Airbnb income, seismic and currency figures are rough estimates, not advice. Always verify everything with the original source and a licensed professional before making any decision. We accept no liability for errors or decisions made based on this information.</div>`;}
 function proGateHTML(desc){return`<div style="padding:20px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;text-align:center"><div style="font-size:26px;margin-bottom:8px">🔒</div><div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px">${desc}</div><a href="./subscription.html" style="display:inline-block;padding:9px 20px;background:var(--accent);color:#000;font-weight:700;font-size:13px;border-radius:6px;text-decoration:none">Get Pro access →</a></div>`;}
@@ -285,6 +285,53 @@ function render(l){
 
   const specs=[['Floor Area',l.size_m2?l.size_m2+'m²':'—'],['Land Area',l.land_m2?l.land_m2+'m²':'—'],['Layout',l.rooms||'—'],['Built',l.built_year?l.built_year+' ('+(new Date().getFullYear()-l.built_year)+' yrs)':'—'],['Condition',conditionEN(l.condition)||'—'],['Prefecture',prefEN]].map(([a,b])=>`<div class="spec"><div class="spec-l">${a}</div><div class="spec-v">${b}</div></div>`).join('');
 
+  // ── Property details extras ──
+  const _pdRows=[
+    ['Structure',        l.building_structure],
+    ['Zoning',           l.zoning],
+    ['Coverage / FAR',   l.building_ratio],
+    ['Sale Area',        l.transaction_area],
+    ['Road Access',      l.private_road],
+    ['Handover Date',    l.handover_date],
+    ['Restrictions',     l.other_restrictions],
+  ].filter(([,v])=>v&&v.trim());
+  const propDetailsHTML=_pdRows.length?`
+    <div class="sec-title">Property Details</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="pd-grid">${_pdRows.map(([k,v])=>`<div class="pd-row"><div class="pd-label">${k}</div><div class="pd-val">${v}</div></div>`).join('')}</div>
+    </div>`:'';
+
+  // ── Amenities / features ──
+  let featuresHTML='';
+  try{
+    const _f=l.features?(typeof l.features==='string'?JSON.parse(l.features):l.features):null;
+    const _fe=_f?Object.entries(_f).filter(([,v])=>v):[];
+    if(_fe.length)featuresHTML=`
+      <div class="sec-title">Amenities</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="pd-grid">${_fe.map(([k,v])=>`<div class="pd-row"><div class="pd-label">${k}</div><div class="pd-val">${v}</div></div>`).join('')}</div>
+      </div>`;
+  }catch{}
+
+  // ── Nearby facilities ──
+  let surroundingsHTML='';
+  try{
+    const _s=l.surroundings?(typeof l.surroundings==='string'?JSON.parse(l.surroundings):l.surroundings):null;
+    if(_s&&_s.length)surroundingsHTML=`
+      <div class="sec-title">Nearby Facilities</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="pd-grid">${_s.map(item=>`<div class="pd-row"><div class="pd-label">${item.type}</div><div class="pd-val">${item.info}</div></div>`).join('')}</div>
+      </div>`;
+  }catch{}
+
+  // ── Agent / listed-by ──
+  const agentHTML=(l.agent_company||l.agent_license)?`
+    <div class="sec-title">Listed By</div>
+    <div class="card" style="padding:14px 16px">
+      ${l.agent_company?`<div style="font-weight:600;font-size:14px;margin-bottom:4px">${l.agent_company}</div>`:''}
+      ${l.agent_license?`<div style="font-size:12px;color:var(--text3);font-family:var(--mono)">${l.agent_license}</div>`:''}
+    </div>`:'';
+
   document.getElementById('wrap').innerHTML=`
     ${gallery}
     <div class="loc">${prefEN}${l.city?' · '+l.city:''} · ${l.source||''}</div>
@@ -294,9 +341,12 @@ function render(l){
     <div class="actions" id="actions"></div>
     <div class="price-block">${price}</div>
     <div class="specs">${specs}</div>
+    ${propDetailsHTML}
 
     ${l.traffic ? `<div class="sec-title">Transit access</div>
     <div class="card" style="padding:12px 16px;margin-bottom:16px"><div style="font-family:var(--mono);font-size:13px;color:var(--text2);line-height:1.9">${l.traffic.split('\n').filter(Boolean).map(t=>'🚉 '+t.trim()).join('<br>')}</div></div>` : ''}
+    ${featuresHTML}
+    ${surroundingsHTML}
 
     <div class="sec-title">Building — seismic standard</div>
     <div class="card">
@@ -317,6 +367,7 @@ function render(l){
 
     ${(l.lat&&l.lng)?`<div class="sec-title">Approximate location</div><div id="map"></div><div style="font-size:11px;color:var(--text3);margin-bottom:8px">📍 Town-level only — use the Google Maps link above for the exact address.</div>`:''}
 
+    ${agentHTML}
     <div class="btns">
       <a class="btn btn-p" href="${l.source_url}" target="_blank" onclick="track('source_click',{id:'${l.id}'})">→ View original listing</a>
       <a class="btn btn-s" href="./?l=${encodeURIComponent(l.id)}">See on map / app</a>
