@@ -326,11 +326,24 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     city = re.sub(r"^.{2,4}[都道府県]", "", addr).strip()[:30] if addr else ""
 
     # ---- Built year ----
+    # SUUMO stores dates as western year ("2012年") OR Japanese era year ("平成23年").
+    _ERA_BASE = {"明治": 1868, "大正": 1912, "昭和": 1926, "平成": 1989, "令和": 2019}
     built_year = None
     for _bk in ("築年月", "建築年月", "築年"):
-        bm = re.search(r"(\d{4})年", rows.get(_bk, ""))
+        _raw = rows.get(_bk, "")
+        if not _raw:
+            continue
+        # Western year (4-digit)
+        bm = re.search(r"(\d{4})年", _raw)
         if bm:
             built_year = int(bm.group(1))
+            break
+        # Japanese era year (e.g. 平成23年, 令和元年)
+        bm = re.search(r"(明治|大正|昭和|平成|令和)(\d+|元)年", _raw)
+        if bm:
+            era_base = _ERA_BASE[bm.group(1)]
+            era_yr   = 1 if bm.group(2) == "元" else int(bm.group(2))
+            built_year = era_base + era_yr - 1
             break
 
     # ---- SUUMO publish date ----
