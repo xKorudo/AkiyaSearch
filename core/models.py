@@ -33,8 +33,11 @@ class Listing:
     other_restrictions: str = ""     # その他制限事項
     handover_date: str = ""          # 引渡可能時期
     transaction_area: str = ""       # 売買対象面積
-    features: str = ""               # JSON: kitchen/bath/floor-plan amenities
-    surroundings: str = ""           # JSON: nearby facilities with distances
+    current_status: str = ""         # 現況 (Vacant / Occupied / etc.)
+    land_rights: str = ""            # 土地権利 (Freehold / Leasehold / etc.)
+    land_category: str = ""          # 地目 (Residential land / Rice paddy / etc.)
+    features: str = ""               # JSON: all amenity fields (kitchen/bath/utilities/etc.)
+    surroundings: str = ""           # JSON: nearby facilities with parsed distance + time
     agent_company: str = ""          # 不動産会社名 (公開義務情報)
     agent_license: str = ""          # 免許番号 (公開義務情報)
     next_update: str = ""            # 次回更新予定日 — skip re-scrape until this date

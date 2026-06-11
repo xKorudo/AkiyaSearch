@@ -287,8 +287,11 @@ function render(l){
 
   // ── Property details extras ──
   const _pdRows=[
+    ['Status',           l.current_status],
     ['Structure',        l.building_structure],
     ['Zoning',           l.zoning],
+    ['Land Rights',      l.land_rights],
+    ['Land Category',    l.land_category],
     ['Coverage / FAR',   l.building_ratio],
     ['Sale Area',        l.transaction_area],
     ['Road Access',      l.private_road],
@@ -302,8 +305,55 @@ function render(l){
     </div>`:'';
 
   // ── Amenities / features ──
-  const _FEAT_KEY={'間取り詳細':'Floor Plan Detail','キッチン':'Kitchen','バス・トイレ':'Bath & Toilet','バス':'Bath','トイレ':'Toilet','床・収納':'Flooring & Storage','設備・サービス':'Facilities','部屋の向き':'Orientation','冷暖房':'Climate Control','駐車場':'Parking'};
-  const _SURR_TYPE={'スーパー':'Supermarket','コンビニ':'Convenience Store','小学校':'Elementary School','中学校':'Middle School','高校・大学':'High School / Univ.','病院':'Hospital','公園':'Park','銀行・ATM':'Bank / ATM','図書館':'Library','郵便局':'Post Office','薬局':'Pharmacy','ドラッグストア':'Drug Store'};
+  const _FEAT_KEY={
+    '間取り詳細':'Floor Plan','キッチン':'Kitchen','バス・トイレ':'Bath & Toilet',
+    'バス':'Bath','トイレ':'Toilet','床・収納':'Flooring & Storage',
+    '設備・サービス':'Facilities','部屋の向き':'Orientation','冷暖房':'Climate Control',
+    '駐車場':'Parking','設備その他':'Other Equipment','その他設備':'Other Equipment',
+    'セキュリティ':'Security','テレビ・通信':'TV & Communications',
+    '室内設備':'Indoor Equipment','その他の設備':'Other Equipment',
+    '水道・下水':'Water & Sewage','水道':'Water Supply','下水':'Sewage',
+    'ガス':'Gas','電気':'Electricity','バルコニー':'Balcony',
+    'その他':'Other','備考':'Notes',
+  };
+  const _FEAT_VAL={
+    // Kitchen
+    'システムキッチン':'System kitchen','対面式キッチン':'Open-plan kitchen',
+    'IHコンロ':'IH cooktop','ガスコンロ':'Gas range',
+    '食器洗浄機':'Dishwasher','食器洗い乾燥機':'Dishwasher/dryer',
+    // Bath
+    '追い焚き':'Reheating bath','浴室乾燥機':'Bathroom dryer',
+    '温水洗浄便座':'Bidet seat','バス・トイレ別':'Separate bath & toilet',
+    'バストイレ別':'Separate bath & toilet',
+    // Flooring
+    'フローリング':'Hardwood floor','畳':'Tatami','押し入れ':'Japanese closet',
+    'ウォークインクローゼット':'Walk-in closet','クローゼット':'Closet',
+    // Utilities
+    '都市ガス':'City gas','プロパン':'Propane / LPG','オール電化':'All-electric',
+    '公営水道':'Public water supply','私営水道':'Private water supply',
+    '井戸':'Well water','公共下水':'Public sewage','浄化槽':'Septic tank',
+    // Parking
+    '有':'Available','無':'None','有り':'Available','なし':'None','あり':'Available',
+    '車庫':'Garage','カーポート':'Carport','駐車スペース':'Parking space',
+    '2台':'2 cars','1台':'1 car','3台':'3 cars',
+    // Security / other
+    'オートロック':'Auto-lock','モニター付インターホン':'Video intercom',
+    'エアコン':'Air conditioning','ガス暖房':'Gas heating',
+    'TVインターホン':'Video intercom',
+  };
+  const _SURR_TYPE={
+    'スーパー':'Supermarket','コンビニ':'Convenience Store',
+    '小学校':'Elementary School','中学校':'Middle School',
+    '高校・大学':'High School / Univ.','幼稚園・保育園':'Kindergarten',
+    '大学':'University','病院':'Hospital','クリニック':'Clinic',
+    '公園':'Park','銀行・ATM':'Bank / ATM','図書館':'Library',
+    '郵便局':'Post Office','薬局':'Pharmacy','ドラッグストア':'Drug Store',
+    'ショッピングセンター':'Shopping Centre','ホームセンター':'Home Centre',
+    'レストラン':'Restaurant','市役所・区役所':'City Hall',
+    '警察署':'Police Station','消防署':'Fire Station',
+  };
+  // translate a feature value via lookup, splitting on common separators
+  function _fval(v){return v.split(/[、,・\/]/).map(p=>_FEAT_VAL[p.trim()]||p.trim()).join(', ');}
   let featuresHTML='';
   try{
     const _f=l.features?(typeof l.features==='string'?JSON.parse(l.features):l.features):null;
@@ -311,7 +361,7 @@ function render(l){
     if(_fe.length)featuresHTML=`
       <div class="sec-title">Amenities</div>
       <div class="card" style="padding:0;overflow:hidden">
-        <div class="pd-grid">${_fe.map(([k,v])=>`<div class="pd-row"><div class="pd-label">${_FEAT_KEY[k]||k}</div><div class="pd-val">${v}</div></div>`).join('')}</div>
+        <div class="pd-grid">${_fe.map(([k,v])=>`<div class="pd-row"><div class="pd-label">${_FEAT_KEY[k]||k}</div><div class="pd-val">${_fval(v)}</div></div>`).join('')}</div>
       </div>`;
   }catch{}
 
@@ -322,7 +372,14 @@ function render(l){
     if(_s&&_s.length)surroundingsHTML=`
       <div class="sec-title">Nearby Facilities</div>
       <div class="card" style="padding:0;overflow:hidden">
-        <div class="pd-grid">${_s.map(item=>`<div class="pd-row"><div class="pd-label">${_SURR_TYPE[item.type]||item.type}</div><div class="pd-val">${item.info}</div></div>`).join('')}</div>
+        <div class="pd-grid">${_s.map(item=>{
+          const label=_SURR_TYPE[item.type]||item.type;
+          const name=item.name||'';
+          const dist=item.distance_m?(item.distance_m>=1000?(item.distance_m/1000).toFixed(1)+'km':item.distance_m+'m'):'';
+          const time=item.time_min?item.time_min+' min walk':'';
+          const detail=[name,dist,time].filter(Boolean).join(' · ')||item.info;
+          return`<div class="pd-row"><div class="pd-label">${label}</div><div class="pd-val">${detail}</div></div>`;
+        }).join('')}</div>
       </div>`;
   }catch{}
 

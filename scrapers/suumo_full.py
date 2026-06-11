@@ -235,6 +235,44 @@ def _translate_license(s: str) -> str:
     return s
 
 
+_STATUS_MAP = {
+    "空室": "Vacant", "空き": "Vacant", "空家": "Vacant",
+    "居住中": "Occupied", "使用中": "In use",
+    "賃貸中": "Tenanted", "賃借中": "Tenanted",
+    "更地": "Cleared land", "建築中": "Under construction",
+}
+
+_RIGHTS_MAP = {
+    "所有権": "Freehold",
+    "旧法地上権": "Old-code Surface Rights",
+    "旧法賃借権": "Old-code Leasehold",
+    "普通賃借権": "Standard Leasehold",
+    "定期賃借権": "Fixed-term Leasehold",
+    "旧法借地権": "Old-code Leasehold",
+    "借地権": "Leasehold",
+    "地上権": "Surface Rights",
+}
+
+_LAND_CAT_MAP = {
+    "宅地": "Residential land",
+    "田": "Rice paddy",
+    "畑": "Field/farmland",
+    "山林": "Forest",
+    "雑種地": "Miscellaneous land",
+    "原野": "Wasteland",
+    "公衆用道路": "Public road",
+    "農地": "Agricultural land",
+}
+
+
+def _lookup(s: str, mapping: dict) -> str:
+    """Return English if key in mapping, otherwise original string."""
+    if not s:
+        return s
+    s2 = _to_hw(s).strip()
+    return mapping.get(s2) or mapping.get(s) or s
+
+
 def _translate_handover(s: str) -> str:
     if not s or sum(1 for c in s if ord(c) > 127) < 2:
         return s
@@ -589,23 +627,54 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
         (rows.get("引渡可能時期") or rows.get("引渡時期") or rows.get("引き渡し時期") or "")[:50]
     )
     transaction_area = rows.get("売買対象面積", "")[:50]
+    current_status = _lookup(
+        rows.get("現況") or rows.get("現状") or "", _STATUS_MAP
+    )[:50]
+    land_rights   = _lookup(
+        rows.get("土地権利") or rows.get("権利") or "", _RIGHTS_MAP
+    )[:80]
+    land_category = _lookup(rows.get("地目", ""), _LAND_CAT_MAP)[:50]
 
-    # ---- Equipment/features (Ausstattung) ----
+    # ---- Equipment / amenities (all categories SUUMO provides) ----
     features_dict = {}
-    for _k in ["間取り詳細", "キッチン", "バス・トイレ", "バス", "トイレ", "床・収納",
-               "設備・サービス", "部屋の向き", "冷暖房", "駐車場"]:
+    for _k in [
+        "間取り詳細", "キッチン", "バス・トイレ", "バス", "トイレ", "床・収納",
+        "設備・サービス", "部屋の向き", "冷暖房", "駐車場",
+        "設備その他", "その他設備", "セキュリティ", "テレビ・通信",
+        "室内設備", "その他の設備", "水道・下水", "水道", "下水", "ガス", "電気",
+        "バルコニー", "その他", "備考",
+    ]:
         _v = rows.get(_k, "")
-        if _v:
+        if _v and _v not in features_dict.values():
             features_dict[_k] = _v
     features = json.dumps(features_dict, ensure_ascii=False) if features_dict else ""
 
-    # ---- Surroundings/nearby facilities ----
+    # ---- Surroundings / nearby facilities (all categories + parsed distance) ----
     surr_list = []
-    for _k in ["スーパー", "コンビニ", "小学校", "中学校", "高校・大学", "病院",
-               "公園", "銀行・ATM", "図書館", "郵便局", "薬局", "ドラッグストア"]:
+    for _k in [
+        "スーパー", "コンビニ", "小学校", "中学校", "高校・大学", "幼稚園・保育園",
+        "大学", "病院", "クリニック", "公園", "銀行・ATM", "図書館", "郵便局",
+        "薬局", "ドラッグストア", "ショッピングセンター", "ホームセンター",
+        "レストラン", "市役所・区役所", "警察署", "消防署",
+    ]:
         _v = rows.get(_k, "")
-        if _v:
-            surr_list.append({"type": _k, "info": _v})
+        if not _v:
+            continue
+        _entry: dict = {"type": _k, "info": _v}
+        # Parse "徒歩N分" and "(Nm)" out of the info string
+        _mt = re.search(r"徒歩(\d+)分", _v)
+        _md = re.search(r"[（(]([\d,.]+)\s*m[）)]", _v)
+        if _mt:
+            _entry["time_min"] = int(_mt.group(1))
+            _name = _v[:_mt.start()].strip()
+            if _name:
+                _entry["name"] = _name
+        if _md:
+            try:
+                _entry["distance_m"] = int(float(_md.group(1).replace(",", "")))
+            except Exception:
+                pass
+        surr_list.append(_entry)
     surroundings = json.dumps(surr_list, ensure_ascii=False) if surr_list else ""
 
     # ---- Agent/realtor (public mandatory disclosure) ----
@@ -676,6 +745,9 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
         other_restrictions=other_restrictions,
         handover_date=handover_date,
         transaction_area=transaction_area,
+        current_status=current_status,
+        land_rights=land_rights,
+        land_category=land_category,
         features=features,
         surroundings=surroundings,
         agent_company=agent_company,
