@@ -188,12 +188,29 @@ def _fetch_detail_urls(session, params: str, page: int):
 
 _EXTRACT_JS = """
 () => {
-    // Build key→value map from all th/td and dt/dd pairs
+    // Build key→value map from all th/td and dt/dd pairs.
+    // Scan by <tr> so that rows with multiple th/td pairs are paired by index
+    // rather than relying on nextElementSibling (which fails when two <th>s are
+    // adjacent or when th and td are in different rows).
     const rows = {};
-    for (const th of document.querySelectorAll('th, dt')) {
-        const key = th.innerText.trim().replace(/\\s+/g, ' ');
-        const sib = th.nextElementSibling;
-        if (sib && key) rows[key] = sib.innerText.trim().replace(/\\s+/g, ' ');
+
+    for (const tr of document.querySelectorAll('tr')) {
+        const ths = Array.from(tr.querySelectorAll('th'));
+        const tds = Array.from(tr.querySelectorAll('td'));
+        if (ths.length > 0 && tds.length > 0) {
+            ths.forEach((th, i) => {
+                const key = th.innerText.trim().replace(/\\s+/g, ' ');
+                if (key && tds[i]) rows[key] = tds[i].innerText.trim().replace(/\\s+/g, ' ');
+            });
+        }
+    }
+
+    for (const dt of document.querySelectorAll('dt')) {
+        const key = dt.innerText.trim().replace(/\\s+/g, ' ');
+        if (!key) continue;
+        let dd = dt.nextElementSibling;
+        while (dd && dd.tagName !== 'DD') dd = dd.nextElementSibling;
+        if (dd) rows[key] = dd.innerText.trim().replace(/\\s+/g, ' ');
     }
 
     // Title (h1 or property-title element)
@@ -282,14 +299,17 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
         size_m2 = float(fm.group(1))
 
     # ---- Address / city ----
-    addr = rows.get("所在地", "")
+    # Strip trailing "地図" map-link text injected by SUUMO into innerText
+    addr = re.sub(r"\s*地図\s*.*$", "", rows.get("所在地", "")).strip()
     city = re.sub(r"^.{2,4}[都道府県]", "", addr).strip()[:30] if addr else ""
 
     # ---- Built year ----
     built_year = None
-    bm = re.search(r"(\d{4})年", rows.get("築年月", ""))
-    if bm:
-        built_year = int(bm.group(1))
+    for _bk in ("築年月", "建築年月", "築年"):
+        bm = re.search(r"(\d{4})年", rows.get(_bk, ""))
+        if bm:
+            built_year = int(bm.group(1))
+            break
 
     # ---- SUUMO publish date ----
     listed_at = None
@@ -347,10 +367,12 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     if not imgs:
         return None
 
-    # ---- Geocode (prefecture centroid + scatter) ----
+    # ---- Geocode (prefecture centroid + small scatter) ----
+    # ±0.1° ≈ 11 km — large enough to de-duplicate pins, small enough to stay
+    # within the prefecture rather than landing in the ocean.
     coords = PREF_COORDS.get(pref_jp)
-    lat = coords[0] + random.uniform(-0.5, 0.5) if coords else None
-    lng = coords[1] + random.uniform(-0.5, 0.5) if coords else None
+    lat = coords[0] + random.uniform(-0.1, 0.1) if coords else None
+    lng = coords[1] + random.uniform(-0.1, 0.1) if coords else None
 
     # ---- Translate ----
     title_en       = ""
