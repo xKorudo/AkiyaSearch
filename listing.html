@@ -302,6 +302,8 @@ function render(l){
     </div>`:'';
 
   // ── Amenities / features ──
+  const _FEAT_KEY={'間取り詳細':'Floor Plan Detail','キッチン':'Kitchen','バス・トイレ':'Bath & Toilet','バス':'Bath','トイレ':'Toilet','床・収納':'Flooring & Storage','設備・サービス':'Facilities','部屋の向き':'Orientation','冷暖房':'Climate Control','駐車場':'Parking'};
+  const _SURR_TYPE={'スーパー':'Supermarket','コンビニ':'Convenience Store','小学校':'Elementary School','中学校':'Middle School','高校・大学':'High School / Univ.','病院':'Hospital','公園':'Park','銀行・ATM':'Bank / ATM','図書館':'Library','郵便局':'Post Office','薬局':'Pharmacy','ドラッグストア':'Drug Store'};
   let featuresHTML='';
   try{
     const _f=l.features?(typeof l.features==='string'?JSON.parse(l.features):l.features):null;
@@ -309,7 +311,7 @@ function render(l){
     if(_fe.length)featuresHTML=`
       <div class="sec-title">Amenities</div>
       <div class="card" style="padding:0;overflow:hidden">
-        <div class="pd-grid">${_fe.map(([k,v])=>`<div class="pd-row"><div class="pd-label">${k}</div><div class="pd-val">${v}</div></div>`).join('')}</div>
+        <div class="pd-grid">${_fe.map(([k,v])=>`<div class="pd-row"><div class="pd-label">${_FEAT_KEY[k]||k}</div><div class="pd-val">${v}</div></div>`).join('')}</div>
       </div>`;
   }catch{}
 
@@ -320,7 +322,7 @@ function render(l){
     if(_s&&_s.length)surroundingsHTML=`
       <div class="sec-title">Nearby Facilities</div>
       <div class="card" style="padding:0;overflow:hidden">
-        <div class="pd-grid">${_s.map(item=>`<div class="pd-row"><div class="pd-label">${item.type}</div><div class="pd-val">${item.info}</div></div>`).join('')}</div>
+        <div class="pd-grid">${_s.map(item=>`<div class="pd-row"><div class="pd-label">${_SURR_TYPE[item.type]||item.type}</div><div class="pd-val">${item.info}</div></div>`).join('')}</div>
       </div>`;
   }catch{}
 

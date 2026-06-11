@@ -106,6 +106,138 @@ SESSION_HEADERS = {
 }
 
 # ---------------------------------------------------------------------------
+# Field-value translation helpers
+# ---------------------------------------------------------------------------
+
+_STRUCTURE_SUBS = [
+    ("鉄筋コンクリート造", "Reinforced concrete"),
+    ("鉄骨鉄筋コンクリート造", "Steel-reinforced concrete"),
+    ("SRC造",          "Steel-reinforced concrete"),
+    ("RC造",           "Reinforced concrete"),
+    ("軽量鉄骨造",     "Light steel frame"),
+    ("重量鉄骨造",     "Heavy steel frame"),
+    ("鉄骨プレハブ造", "Steel prefab"),
+    ("プレハブ造",     "Prefab"),
+    ("鉄骨造",         "Steel frame"),
+    ("木造",           "Wood frame"),
+    ("ブロック造",     "Block construction"),
+    ("ALC造",          "ALC panel"),
+    ("ログ造",         "Log house"),
+    ("ログハウス",     "Log house"),
+    ("ツーバイフォー工法", "2×4 frame"),
+    ("2×4工法",        "2×4 frame"),
+    ("パネル工法",     "Panel system"),
+    ("平屋建て",       "single-story"),
+    ("平屋建",         "single-story"),
+    ("平屋",           "single-story"),
+    ("・",             ", "),
+    ("（",             " ("),
+    ("）",             ")"),
+]
+
+_ZONING_MAP = {
+    "第1種低層住居専用地域": "Class 1 Low-Rise Residential",
+    "第2種低層住居専用地域": "Class 2 Low-Rise Residential",
+    "第1種中高層住居専用地域": "Class 1 Mid/High-Rise Residential",
+    "第2種中高層住居専用地域": "Class 2 Mid/High-Rise Residential",
+    "第1種住居地域": "Class 1 Residential",
+    "第2種住居地域": "Class 2 Residential",
+    "準住居地域": "Quasi-Residential",
+    "近隣商業地域": "Neighborhood Commercial",
+    "商業地域": "Commercial",
+    "準工業地域": "Quasi-Industrial",
+    "工業地域": "Industrial",
+    "工業専用地域": "Exclusive Industrial",
+    "田園住居地域": "Agricultural Residential",
+    "市街化調整区域": "Urban Development Control Area",
+    "1種低層": "Class 1 Low-Rise Residential",
+    "2種低層": "Class 2 Low-Rise Residential",
+    "1種中高層": "Class 1 Mid/High-Rise Residential",
+    "2種中高層": "Class 2 Mid/High-Rise Residential",
+    "1種住居": "Class 1 Residential",
+    "2種住居": "Class 2 Residential",
+    "準住居": "Quasi-Residential",
+    "近隣商業": "Neighborhood Commercial",
+    "商業": "Commercial",
+    "準工業": "Quasi-Industrial",
+    "工業専用": "Exclusive Industrial",
+    "工業": "Industrial",
+    "田園住居": "Agricultural Residential",
+    "非線引": "Non-demarcated Area",
+    "白地": "Unzoned Area",
+    "調整区域": "Development Control Area",
+    "無指定": "Unzoned",
+    "指定無し": "Unzoned",
+}
+
+_HANDOVER_PATTERNS = [
+    ("即引渡可", "Immediate"),
+    ("即時引渡", "Immediate"),
+    ("即引き渡し可", "Immediate"),
+    ("即時", "Immediate"),
+    ("相談", "Negotiable"),
+    ("要相談", "Negotiable"),
+    ("引渡時期相談", "Negotiable"),
+    ("更地渡し", "Vacant lot transfer"),
+    ("現況渡し", "As-is"),
+    ("現状渡し", "As-is"),
+    ("未定", "TBD"),
+]
+
+_MONTH_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+_ERA_BASE2 = {"明治": 1868, "大正": 1912, "昭和": 1926, "平成": 1989, "令和": 2019}
+
+
+def _translate_structure(s: str) -> str:
+    if not s or sum(1 for c in s if ord(c) > 127) < 2:
+        return s
+    result = s
+    for jp, en in _STRUCTURE_SUBS:
+        result = result.replace(jp, en)
+    result = re.sub(r"(\d+)階建", lambda m: m.group(1) + "-story", result)
+    return result.strip(", ").strip()
+
+
+def _translate_zoning(s: str) -> str:
+    if not s or sum(1 for c in s if ord(c) > 127) < 2:
+        return s
+    # Replace longest matches first
+    result = s
+    for jp, en in sorted(_ZONING_MAP.items(), key=lambda x: -len(x[0])):
+        result = result.replace(jp, en)
+    result = result.replace("/", " / ").replace("・", " / ")
+    return result
+
+
+def _translate_handover(s: str) -> str:
+    if not s or sum(1 for c in s if ord(c) > 127) < 2:
+        return s
+    for jp, en in _HANDOVER_PATTERNS:
+        if jp in s:
+            return en
+    # Japanese era year: 令和7年3月 → Mar 2025
+    m = re.search(r"(明治|大正|昭和|平成|令和)(\d+|元)年(\d+)月", s)
+    if m:
+        base = _ERA_BASE2[m.group(1)]
+        yr = 1 if m.group(2) == "元" else int(m.group(2))
+        year = base + yr - 1
+        month = int(m.group(3))
+        if 1 <= month <= 12:
+            return f"{_MONTH_EN[month-1]} {year}"
+    # Western year: 2025年3月
+    m2 = re.search(r"(\d{4})年(\d+)月", s)
+    if m2:
+        year = int(m2.group(1))
+        month = int(m2.group(2))
+        if 1 <= month <= 12:
+            return f"{_MONTH_EN[month-1]} {year}"
+    try:
+        return translate(s) or s
+    except Exception:
+        return s
+
+
+# ---------------------------------------------------------------------------
 # Checkpoint helpers (stored in scrape_state table)
 # ---------------------------------------------------------------------------
 
@@ -364,12 +496,30 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     rooms = rows.get("間取り", "")[:15]
 
     # ---- Additional property details ----
-    building_structure = (rows.get("構造・工法") or rows.get("構造") or "")[:100]
-    zoning = rows.get("用途地域", "")[:100]
+    building_structure = _translate_structure(
+        (rows.get("構造・工法") or rows.get("構造") or "")[:100]
+    )
+    zoning = _translate_zoning(rows.get("用途地域", "")[:100])
     building_ratio = rows.get("建ぺい率・容積率", "")[:50]
-    private_road = rows.get("私道負担・道路", "")[:100]
-    other_restrictions = rows.get("その他制限事項", "")[:200]
-    handover_date = (rows.get("引渡可能時期") or rows.get("引渡時期") or rows.get("引き渡し時期") or "")[:50]
+    _private_road_raw = rows.get("私道負担・道路", "")[:200]
+    private_road = ""
+    if _private_road_raw:
+        try:
+            private_road = translate(_private_road_raw) or _private_road_raw
+        except Exception:
+            private_road = _private_road_raw
+    private_road = private_road[:200]
+    _restrictions_raw = rows.get("その他制限事項", "")[:200]
+    other_restrictions = ""
+    if _restrictions_raw:
+        try:
+            other_restrictions = translate(_restrictions_raw) or _restrictions_raw
+        except Exception:
+            other_restrictions = _restrictions_raw
+    other_restrictions = other_restrictions[:400]
+    handover_date = _translate_handover(
+        (rows.get("引渡可能時期") or rows.get("引渡時期") or rows.get("引き渡し時期") or "")[:50]
+    )
     transaction_area = rows.get("売買対象面積", "")[:50]
 
     # ---- Equipment/features (Ausstattung) ----
