@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(ROOT, "akiya_v4.db")
 OUT = os.path.join(ROOT, "public")
 LIVE_URL = os.environ.get("LIVE_URL", "https://akiya-finder-159.pages.dev/listings-0.json")
-CHUNK_SIZE = 10_000  # listings per file — keeps each chunk well under CF's 25 MiB limit
+CHUNK_SIZE = 2_000   # listings per file — keeps each chunk well under CF's 25 MiB limit
 
 COLUMNS = [
     "id", "title", "prefecture", "city", "price_jpy", "price_label",
