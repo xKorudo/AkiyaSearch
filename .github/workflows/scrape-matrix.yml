@@ -10,7 +10,7 @@ name: Full scrape — matrix (all prefectures in parallel)
 
 on:
   schedule:
-    - cron: "0 2 * * *"   # daily at 02:00 UTC
+    - cron: "0 */3 * * *"   # every 3 hours
   workflow_dispatch:
     inputs:
       limit:
