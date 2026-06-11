@@ -17,10 +17,6 @@ on:
         description: "Max listings per prefecture"
         default: "150"
 
-concurrency:
-  group: akiya-matrix
-  cancel-in-progress: false
-
 permissions:
   contents: read
 
