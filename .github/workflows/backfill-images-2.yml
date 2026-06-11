@@ -4,9 +4,7 @@ name: Backfill Images 2 & Deploy
 # never shares a start time with any other workflow (shard-0 runs EVEN hours).
 
 on:
-  schedule:
-    - cron: "0 1-23/2 * * *"   # odd hours at :00 (01,03,…23)
-  workflow_dispatch: {}
+  workflow_dispatch: {}  # schedule disabled — images captured inline by suumo_full.py
 
 permissions:
   contents: read

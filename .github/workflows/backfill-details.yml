@@ -4,9 +4,7 @@ name: Backfill Details & Deploy
 # it never shares a start minute with any other workflow.
 
 on:
-  schedule:
-    - cron: "20 1-23/2 * * *"   # odd hours at :20 (01:20,03:20,…)
-  workflow_dispatch: {}
+  workflow_dispatch: {}  # schedule disabled — backfill not needed with suumo_full.py
 
 permissions:
   contents: read

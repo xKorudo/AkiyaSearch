@@ -8,9 +8,7 @@ name: Scrape & Deploy
 # it can, and the incremental design accumulates coverage over successive runs.
 
 on:
-  schedule:
-    - cron: "40 0-23/4 * * *"   # every 4h at :40 (00:40,04:40,…) — staggered, no collisions
-  workflow_dispatch: {}        # adds a "Run workflow" button for manual runs
+  workflow_dispatch: {}        # schedule disabled — new scraper (suumo_full.py) takes over
 
 permissions:
   contents: read
