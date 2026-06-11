@@ -27,13 +27,14 @@ jobs:
           path: |
             akiya_v4.db
             geocache.json
-          key: akiya-db-${{ github.run_id }}
+          key: akiya-matrix-master-db1-${{ github.run_id }}
           restore-keys: |
-            akiya-db-
+            akiya-matrix-master-db1-
 
       - name: Build static snapshot
         run: python export_static.py
         env:
+          ALLOW_SHRINK: "1"
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
