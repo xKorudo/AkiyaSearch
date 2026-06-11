@@ -303,6 +303,9 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     title       = data.get("title", "") or ""
     description = data.get("description", "") or ""
 
+    # DEBUG — print every extracted key so we can audit missing fields
+    print(f"    ROWS KEYS: {sorted(rows.keys())}", flush=True)
+
     # ---- Price ----
     price_text  = rows.get("販売価格") or rows.get("価格") or ""
     pm          = re.search(r"([\d,]+(?:\.\d+)?)\s*万円", price_text)
