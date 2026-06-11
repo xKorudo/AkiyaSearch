@@ -283,6 +283,18 @@ function render(l){
   else if(l.price_jpy)price=`<span class="price-jpy">${fmtYen(l.price_jpy)}</span>${userCurrency!=='JPY'?`<span class="price-conv">≈ ${convPrice(l.price_jpy)}</span>`:''}<div class="price-note">¥${l.price_jpy.toLocaleString('de-DE')}</div>`;
   else price='<span style="color:var(--text3)">Price on request — 要問合せ</span>';
 
+  const transitRows=(l.traffic||'').split('\n').map(s=>s.trim()).filter(Boolean).map(line=>{
+    const walkM=line.match(/(\d+)\s*(?:minutes?|mins?)\s*(?:on\s+foot|walk(?:ing)?)/i);
+    const busM=line.match(/(\d+)\s*(?:minutes?|mins?)\s*(?:by\s+)?bus/i);
+    const timeM=walkM||busM||line.match(/(\d+)\s*(?:minutes?|mins?)/i);
+    const mins=timeM?timeM[1]:null;
+    const badge=mins?`${mins} min ${busM?'bus':'walk'}`:'—';
+    const icon=busM?'🚌':'🚶';
+    const dest=line.replace(/(\d+)\s*(?:minutes?|mins?)\s*(?:on\s+foot|walk(?:ing)?|(?:by\s+)?bus)/gi,'').replace(/[,\s·\/\-]+$/,'').trim()||line;
+    return `<div class="transit-row"><div class="transit-time">${icon} ${badge}</div><div class="transit-dest">${dest}</div></div>`;
+  }).join('');
+  const transitHTML=transitRows?`<div class="sec-title">Transit Access</div><div class="card" style="padding:8px 0;overflow:hidden">${transitRows}</div>`:'';
+
   const specs=[['Floor Area',l.size_m2?l.size_m2+'m²':'—'],['Land Area',l.land_m2?l.land_m2+'m²':'—'],['Layout',l.rooms||'—'],['Built',l.built_year?l.built_year+' ('+(new Date().getFullYear()-l.built_year)+' yrs)':'—'],['Condition',conditionEN(l.condition)||'—'],['Prefecture',prefEN]].map(([a,b])=>`<div class="spec"><div class="spec-l">${a}</div><div class="spec-v">${b}</div></div>`).join('');
 
   // ── Property details extras ──
@@ -447,6 +459,8 @@ function render(l){
     ${(l.description_en||l.description)?`<div class="sec-title">Description</div>
       ${l.description_en?`<div class="desc">${l.description_en}</div>`:''}
       ${l.description?`<div class="desc jp" style="color:var(--text3)">${l.description}</div>`:''}`:''}
+
+    ${transitHTML}
 
     <div class="sec-title" id="ab-title">Airbnb potential</div>
     <div id="ab-section"></div>
