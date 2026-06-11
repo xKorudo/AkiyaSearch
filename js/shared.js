@@ -1050,7 +1050,7 @@ function cardHTML(l) {
       </div>
     </div>
     <div class="lcard-footer">
-      <div class="lcard-tags">${viewCount(l.id) ? `<span class="ltag" title="Times viewed">👁 ${viewCount(l.id)}</span>` : ''}${tags}${l.first_seen ? `<span class="ltag ltag-date" title="First seen">📅 ${fmtDate(l.first_seen)}</span>` : ''}</div>
+      <div class="lcard-tags">${viewCount(l.id) ? `<span class="ltag" title="Times viewed">👁 ${viewCount(l.id)}</span>` : ''}${tags}${(l.listed_at||l.first_seen) ? `<span class="ltag ltag-date" title="Listed on SUUMO">📅 ${fmtDate(l.listed_at||l.first_seen)}</span>` : ''}</div>
       <span class="lcard-link" onclick="event.stopPropagation();event.preventDefault();track('source_click',{id:'${l.id}'});window.open('${l.source_url}','_blank')">Source →</span>
     </div>
   </a>`;
