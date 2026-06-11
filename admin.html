@@ -43,9 +43,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   await initAuth();
   await checkAdmin();
   // load a raw copy of listings (without the hide filter) for lookups
-  for (const src of ['/api/listings', './listings.json']) {
-    try { const r = await fetch(src); if (!r.ok) continue; const d = await r.json();
-      RAW = (d.listings || []).filter(l => l.source !== 'AKIYA BANK'); if (RAW.length) break; } catch {}
+  try {
+    const r = await fetch('/api/listings');
+    if (r.ok) { const d = await r.json(); RAW = (d.listings||[]).filter(l=>l.source!=='AKIYA BANK'); }
+  } catch {}
+  if (!RAW.length) {
+    try {
+      const d0 = await fetch('./listings-0.json').then(r=>r.ok?r.json():null);
+      if (d0) {
+        let all = d0.listings||[];
+        for (let i=1;i<(d0.chunks||1);i++) {
+          try { const di=await fetch(`./listings-${i}.json`).then(r=>r.json()); all=all.concat(di.listings||[]); } catch {}
+        }
+        RAW = all.filter(l=>l.source!=='AKIYA BANK');
+      }
+    } catch {}
   }
   // also load overrides map (so we know what's hidden/patched)
   try { const r = await fetch(`${SUPABASE_URL}/rest/v1/listing_overrides?select=listing_id,hidden,patch`,
