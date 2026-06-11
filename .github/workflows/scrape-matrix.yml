@@ -32,7 +32,7 @@ jobs:
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      max-parallel: 6       # stay under 6 simultaneous datacenter IPs
+      max-parallel: 20      # GitHub Actions supports up to 20 concurrent jobs on free plan
       matrix:
         pref:
           - 北海道
