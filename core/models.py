@@ -40,4 +40,7 @@ class Listing:
     surroundings: str = ""           # JSON: nearby facilities with parsed distance + time
     agent_company: str = ""          # 不動産会社名 (公開義務情報)
     agent_license: str = ""          # 免許番号 (公開義務情報)
+    agent_phone: str = ""            # 電話番号
+    agent_url: str = ""              # ホームページ
+    transaction_type: str = ""       # 取引態様 (Owner / Agent / Representative)
     next_update: str = ""            # 次回更新予定日 — skip re-scrape until this date

@@ -683,6 +683,12 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
                      rows.get("取扱会社") or rows.get("商号") or
                      rows.get("業者名") or rows.get("媒介業者") or "")[:100]
     agent_license = _translate_license(rows.get("免許番号", "")[:60])
+    agent_phone = rows.get("電話番号", "")[:30]
+    agent_url   = rows.get("ホームページ", "")[:200]
+    _tx = rows.get("取引態様", "")
+    _TX_MAP = {"売主": "Owner (direct)", "仲介": "Agent", "代理": "Representative",
+               "販売代理": "Sales Representative"}
+    transaction_type = _lookup(_tx, _TX_MAP)[:50]
 
     # ---- Images ----
     m_id = re.search(r"nc_(\d+)", url)
@@ -752,6 +758,9 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
         surroundings=surroundings,
         agent_company=agent_company,
         agent_license=agent_license,
+        agent_phone=agent_phone,
+        agent_url=agent_url,
+        transaction_type=transaction_type,
         next_update=next_update,
     )
 

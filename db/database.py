@@ -47,7 +47,10 @@ def init_db():
         next_update TEXT DEFAULT '',
         current_status TEXT DEFAULT '',
         land_rights TEXT DEFAULT '',
-        land_category TEXT DEFAULT ''
+        land_category TEXT DEFAULT '',
+        agent_phone TEXT DEFAULT '',
+        agent_url TEXT DEFAULT '',
+        transaction_type TEXT DEFAULT ''
     )
     """)
 
@@ -58,6 +61,7 @@ def init_db():
         ("transaction_area", "''"), ("features", "''"), ("surroundings", "''"),
         ("agent_company", "''"), ("agent_license", "''"), ("next_update", "''"),
         ("current_status", "''"), ("land_rights", "''"), ("land_category", "''"),
+        ("agent_phone", "''"), ("agent_url", "''"), ("transaction_type", "''"),
     ]:
         try:
             c.execute(f"ALTER TABLE listings ADD COLUMN {col} TEXT DEFAULT {defval}")
@@ -272,7 +276,7 @@ def upsert(listing):
             listing.first_seen = datetime.date.today().isoformat()
 
     c.execute("""
-    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
         listing.id,
         listing.title,
@@ -312,6 +316,9 @@ def upsert(listing):
         listing.current_status,
         listing.land_rights,
         listing.land_category,
+        listing.agent_phone,
+        listing.agent_url,
+        listing.transaction_type,
     ))
 
     conn.commit()
