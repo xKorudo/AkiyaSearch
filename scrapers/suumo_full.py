@@ -636,16 +636,19 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     land_category = _lookup(rows.get("地目", ""), _LAND_CAT_MAP)[:50]
 
     # ---- Equipment / amenities (all categories SUUMO provides) ----
+    # "その他"/"備考" are too generic — they capture SUUMO UI tooltip text
+    # ("この情報を他の問い合わせにも自動で反映…") rather than actual property data.
+    _SUUMO_NOISE = ("この情報を他の問い合わせにも自動で反映", "30分で破棄", "一部物件でのみ利用可能")
     features_dict = {}
     for _k in [
         "間取り詳細", "キッチン", "バス・トイレ", "バス", "トイレ", "床・収納",
         "設備・サービス", "部屋の向き", "冷暖房", "駐車場",
         "設備その他", "その他設備", "セキュリティ", "テレビ・通信",
         "室内設備", "その他の設備", "水道・下水", "水道", "下水", "ガス", "電気",
-        "バルコニー", "その他", "備考",
+        "バルコニー",
     ]:
         _v = rows.get(_k, "")
-        if _v and _v not in features_dict.values():
+        if _v and not any(_n in _v for _n in _SUUMO_NOISE):
             features_dict[_k] = _v
     features = json.dumps(features_dict, ensure_ascii=False) if features_dict else ""
 
