@@ -1,0 +1,87 @@
+name: Deploy Fresh
+
+# Deploys ONLY what was scraped in a given matrix run.
+# No old cache is restored, no live-data merge — pure fresh data.
+#
+# Usage:
+#   Trigger manually. Leave run_id blank to use the latest matrix run.
+#   Supply a specific run_id to redeploy an earlier run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Matrix run ID to deploy (leave blank = latest)"
+        default: ""
+
+permissions:
+  contents: read
+  actions: read   # required to download artifacts from another run
+
+jobs:
+  deploy:
+    name: Merge & Deploy (fresh)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Geocache only — no master DB cache, so no old listings can slip in
+      - name: Restore geocache
+        uses: actions/cache@v4
+        with:
+          path: geocache.json
+          key: geocache-${{ github.run_id }}
+          restore-keys: geocache-
+
+      - name: Resolve matrix run ID
+        id: run
+        run: |
+          if [ -n "${{ github.event.inputs.run_id }}" ]; then
+            echo "id=${{ github.event.inputs.run_id }}" >> "$GITHUB_OUTPUT"
+            echo "Using supplied run_id: ${{ github.event.inputs.run_id }}"
+          else
+            ID=$(gh api "repos/${{ github.repository }}/actions/workflows/scrape-matrix.yml/runs" \
+              --jq '[.workflow_runs[] | select(.status=="completed")] | first | .id')
+            echo "id=$ID" >> "$GITHUB_OUTPUT"
+            echo "Latest completed matrix run: $ID"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download prefecture DBs (run ${{ steps.run.outputs.id }})
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.run.outputs.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: db-*
+          path: pref_dbs/
+
+      - name: Merge prefecture DBs into fresh master
+        run: python scripts/merge_dbs.py pref_dbs/
+
+      - name: Geocode listings to real towns
+        run: python enrich_geo.py
+        continue-on-error: true
+
+      - name: Build static snapshot
+        run: python export_static.py
+        env:
+          ALLOW_SHRINK: "1"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public --project-name=akiya-finder --branch main
