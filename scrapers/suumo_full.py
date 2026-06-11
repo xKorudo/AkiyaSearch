@@ -636,10 +636,41 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     land_category = _lookup(rows.get("地目", ""), _LAND_CAT_MAP)[:50]
 
     # ---- Equipment / amenities (all categories SUUMO provides) ----
-    # "その他"/"備考" are too generic — they capture SUUMO UI tooltip text
-    # ("この情報を他の問い合わせにも自動で反映…") rather than actual property data.
     _SUUMO_NOISE = ("この情報を他の問い合わせにも自動で反映", "30分で破棄", "一部物件でのみ利用可能")
+
+    # Keys already consumed by other specific extractors — skip in catch-all
+    _RESERVED_KEYS = {
+        "販売価格", "価格", "土地面積", "建物面積", "専有面積", "所在地",
+        "築年月", "完成時期(築年月)", "完成時期（築年月）", "建築年月", "築年",
+        "情報提供日", "次回更新予定日", "次回更新日", "更新日",
+        "交通", "間取り", "構造・工法", "構造", "用途地域",
+        "建ぺい率・容積率", "私道負担・道路", "その他制限事項",
+        "引渡可能時期", "引渡時期", "引き渡し時期", "売買対象面積",
+        "現況", "現状", "土地権利", "権利", "地目",
+        "会社名", "不動産会社名", "不動産会社", "取扱不動産会社", "取扱会社",
+        "商号", "業者名", "媒介業者", "免許番号", "電話番号", "ホームページ", "取引態様",
+        # Surroundings
+        "スーパー", "コンビニ", "小学校", "中学校", "高校・大学", "幼稚園・保育園",
+        "大学", "病院", "クリニック", "公園", "銀行・ATM", "図書館", "郵便局",
+        "薬局", "ドラッグストア", "ショッピングセンター", "ホームセンター",
+        "レストラン", "市役所・区役所", "警察署", "消防署",
+    }
+
     features_dict = {}
+
+    def _add_feature(k, v):
+        if not v or any(_n in v for _n in _SUUMO_NOISE):
+            return
+        if len(v) > 400:
+            v = v[:400]
+        if sum(1 for c in v if ord(c) > 127) >= 2:
+            try:
+                v = translate(v) or v
+            except Exception:
+                pass
+        features_dict[k] = v
+
+    # Pass 1 — priority keys (known SUUMO amenity headings)
     for _k in [
         "間取り詳細", "キッチン", "バス・トイレ", "バス", "トイレ", "床・収納",
         "設備・サービス", "部屋の向き", "冷暖房", "駐車場",
@@ -647,15 +678,21 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
         "室内設備", "その他の設備", "水道・下水", "水道", "下水", "ガス", "電気",
         "バルコニー",
     ]:
-        _v = rows.get(_k, "")
-        if not _v or any(_n in _v for _n in _SUUMO_NOISE):
+        _add_feature(_k, rows.get(_k, ""))
+
+    # Pass 2 — catch-all: any remaining row not consumed by reserved extractors
+    for _k, _v in rows.items():
+        if _k in _RESERVED_KEYS or _k in features_dict:
             continue
-        if sum(1 for c in _v if ord(c) > 127) >= 2:
-            try:
-                _v = translate(_v) or _v
-            except Exception:
-                pass
-        features_dict[_k] = _v
+        # Skip keys that are obviously UI/admin text (very long values, IDs, etc.)
+        if not _v or len(_v) > 500:
+            continue
+        # Skip pure ASCII short tokens (IDs, numbers)
+        if sum(1 for c in _v if ord(c) > 127) == 0 and len(_v) < 10:
+            continue
+        _add_feature(_k, _v)
+
+    print(f"    rows_keys={list(rows.keys())[:30]}", flush=True)
     features = json.dumps(features_dict, ensure_ascii=False) if features_dict else ""
 
     # ---- Surroundings / nearby facilities (all categories + parsed distance) ----

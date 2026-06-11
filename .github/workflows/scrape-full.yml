@@ -56,9 +56,9 @@ jobs:
           path: |
             akiya_v4.db
             geocache.json
-          key: akiya-fullscrape-db4-${{ github.run_id }}
+          key: akiya-fullscrape-db5-${{ github.run_id }}
           restore-keys: |
-            akiya-fullscrape-db4-
+            akiya-fullscrape-db5-
 
       - name: Run full detail scraper
         run: |
