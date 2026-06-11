@@ -9,8 +9,6 @@ name: Full scrape (single-pass, all data)
 # cover all 47 prefectures completely.
 
 on:
-  schedule:
-    - cron: "20 1-23/4 * * *"   # every 4h at :20 — offset from scrape-and-deploy (:40)
   workflow_dispatch:
     inputs:
       limit:
