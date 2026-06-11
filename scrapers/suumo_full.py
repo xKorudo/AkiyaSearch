@@ -874,9 +874,29 @@ def main():
                     break
 
                 if not detail_urls:
-                    print(f"  [{pref_jp}] p{page_num}: list-page block", flush=True)
-                    blocked = True
-                    break
+                    # Small empty page could be a real bot block, OR the cursor
+                    # advanced past the last page of a low-inventory prefecture.
+                    # If we started mid-way through, retry from page 1 first
+                    # before concluding we're blocked.
+                    if page_num == start_page and start_page > 1:
+                        print(f"  [{pref_jp}] p{page_num}: small/empty — cursor may be past end, retrying p1", flush=True)
+                        _set_cursor(pref_jp, 1)
+                        page_num = 1
+                        detail_urls, ok = _fetch_detail_urls(session, params, 1)
+                        if not ok:
+                            print(f"  [{pref_jp}] p1: no more listings — resetting cursor", flush=True)
+                            _set_cursor(pref_jp, 1)
+                            break
+                        if not detail_urls:
+                            print(f"  [{pref_jp}] p1: list-page block", flush=True)
+                            blocked = True
+                            break
+                        # page 1 returned results — fall through to process them
+                        print(f"  [{pref_jp}] p1: {len(detail_urls)} URLs (after cursor reset)", flush=True)
+                    else:
+                        print(f"  [{pref_jp}] p{page_num}: list-page block", flush=True)
+                        blocked = True
+                        break
 
                 print(f"  [{pref_jp}] p{page_num}: {len(detail_urls)} URLs", flush=True)
 
