@@ -32,11 +32,28 @@ def init_db():
         images TEXT,
         traffic TEXT DEFAULT '',
         first_seen TEXT DEFAULT '',
-        listed_at TEXT
+        listed_at TEXT,
+        building_structure TEXT DEFAULT '',
+        zoning TEXT DEFAULT '',
+        building_ratio TEXT DEFAULT '',
+        private_road TEXT DEFAULT '',
+        other_restrictions TEXT DEFAULT '',
+        handover_date TEXT DEFAULT '',
+        transaction_area TEXT DEFAULT '',
+        features TEXT DEFAULT '',
+        surroundings TEXT DEFAULT '',
+        agent_company TEXT DEFAULT '',
+        agent_license TEXT DEFAULT ''
     )
     """)
 
-    for col, defval in [("traffic", "''"), ("first_seen", "''"), ("listed_at", "NULL")]:
+    for col, defval in [
+        ("traffic", "''"), ("first_seen", "''"), ("listed_at", "NULL"),
+        ("building_structure", "''"), ("zoning", "''"), ("building_ratio", "''"),
+        ("private_road", "''"), ("other_restrictions", "''"), ("handover_date", "''"),
+        ("transaction_area", "''"), ("features", "''"), ("surroundings", "''"),
+        ("agent_company", "''"), ("agent_license", "''"),
+    ]:
         try:
             c.execute(f"ALTER TABLE listings ADD COLUMN {col} TEXT DEFAULT {defval}")
         except Exception:
@@ -250,7 +267,7 @@ def upsert(listing):
             listing.first_seen = datetime.date.today().isoformat()
 
     c.execute("""
-    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    INSERT OR REPLACE INTO listings VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (
         listing.id,
         listing.title,
@@ -275,6 +292,17 @@ def upsert(listing):
         listing.traffic,
         listing.first_seen,
         listing.listed_at,
+        listing.building_structure,
+        listing.zoning,
+        listing.building_ratio,
+        listing.private_road,
+        listing.other_restrictions,
+        listing.handover_date,
+        listing.transaction_area,
+        listing.features,
+        listing.surroundings,
+        listing.agent_company,
+        listing.agent_license,
     ))
 
     conn.commit()

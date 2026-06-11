@@ -299,6 +299,38 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     # ---- Rooms ----
     rooms = rows.get("間取り", "")[:15]
 
+    # ---- Additional property details ----
+    building_structure = (rows.get("構造・工法") or rows.get("構造") or "")[:100]
+    zoning = rows.get("用途地域", "")[:100]
+    building_ratio = rows.get("建ぺい率・容積率", "")[:50]
+    private_road = rows.get("私道負担・道路", "")[:100]
+    other_restrictions = rows.get("その他制限事項", "")[:200]
+    handover_date = (rows.get("引渡可能時期") or rows.get("引渡時期") or rows.get("引き渡し時期") or "")[:50]
+    transaction_area = rows.get("売買対象面積", "")[:50]
+
+    # ---- Equipment/features (Ausstattung) ----
+    features_dict = {}
+    for _k in ["間取り詳細", "キッチン", "バス・トイレ", "バス", "トイレ", "床・収納",
+               "設備・サービス", "部屋の向き", "冷暖房", "駐車場"]:
+        _v = rows.get(_k, "")
+        if _v:
+            features_dict[_k] = _v
+    features = json.dumps(features_dict, ensure_ascii=False) if features_dict else ""
+
+    # ---- Surroundings/nearby facilities ----
+    surr_list = []
+    for _k in ["スーパー", "コンビニ", "小学校", "中学校", "高校・大学", "病院",
+               "公園", "銀行・ATM", "図書館", "郵便局", "薬局", "ドラッグストア"]:
+        _v = rows.get(_k, "")
+        if _v:
+            surr_list.append({"type": _k, "info": _v})
+    surroundings = json.dumps(surr_list, ensure_ascii=False) if surr_list else ""
+
+    # ---- Agent/realtor (public mandatory disclosure) ----
+    agent_company = (rows.get("会社名") or rows.get("不動産会社") or
+                     rows.get("取扱不動産会社") or "")[:100]
+    agent_license = rows.get("免許番号", "")[:60]
+
     # ---- Images ----
     m_id = re.search(r"nc_(\d+)", url)
     bukken_id = m_id.group(1) if m_id else ""
@@ -351,6 +383,17 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
         traffic=traffic,
         first_seen=datetime.date.today().isoformat(),
         listed_at=listed_at,
+        building_structure=building_structure,
+        zoning=zoning,
+        building_ratio=building_ratio,
+        private_road=private_road,
+        other_restrictions=other_restrictions,
+        handover_date=handover_date,
+        transaction_area=transaction_area,
+        features=features,
+        surroundings=surroundings,
+        agent_company=agent_company,
+        agent_license=agent_license,
     )
 
 
@@ -439,9 +482,14 @@ def main():
                     pref_saved  += 1
                     listed_note = f"  listed={listing.listed_at}" if listing.listed_at else ""
                     traffic_note = "✓" if listing.traffic else "—"
+                    extras = sum([
+                        bool(listing.building_structure), bool(listing.zoning),
+                        bool(listing.features), bool(listing.surroundings),
+                        bool(listing.agent_company),
+                    ])
                     print(
                         f"    [{total_saved}/{args.limit}] {len(json.loads(listing.images))} imgs"
-                        f"  traffic={traffic_note}{listed_note}  {url[-40:]}",
+                        f"  traffic={traffic_note}  extras={extras}/5{listed_note}  {url[-40:]}",
                         flush=True
                     )
                     time.sleep(random.uniform(3, 6))

@@ -27,6 +27,9 @@ COLUMNS = [
     "size_m2", "land_m2", "image_url", "source_url", "source", "description",
     "title_en", "description_en", "lat", "lng", "rooms", "built_year",
     "condition", "images", "traffic", "first_seen", "listed_at",
+    "building_structure", "zoning", "building_ratio", "private_road",
+    "other_restrictions", "handover_date", "transaction_area",
+    "features", "surroundings", "agent_company", "agent_license",
 ]
 
 

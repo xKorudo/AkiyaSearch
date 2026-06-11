@@ -26,3 +26,14 @@ class Listing:
     traffic: str = ""
     first_seen: str = ""
     listed_at: Optional[str] = None  # SUUMO 情報提供日 as YYYY-MM-DD
+    building_structure: str = ""     # 構造・工法
+    zoning: str = ""                 # 用途地域
+    building_ratio: str = ""         # 建ぺい率・容積率
+    private_road: str = ""           # 私道負担・道路
+    other_restrictions: str = ""     # その他制限事項
+    handover_date: str = ""          # 引渡可能時期
+    transaction_area: str = ""       # 売買対象面積
+    features: str = ""               # JSON: kitchen/bath/floor-plan amenities
+    surroundings: str = ""           # JSON: nearby facilities with distances
+    agent_company: str = ""          # 不動産会社名 (公開義務情報)
+    agent_license: str = ""          # 免許番号 (公開義務情報)
