@@ -188,29 +188,51 @@ def _fetch_detail_urls(session, params: str, page: int):
 
 _EXTRACT_JS = """
 () => {
-    // Build key→value map from all th/td and dt/dd pairs.
-    // Scan by <tr> so that rows with multiple th/td pairs are paired by index
-    // rather than relying on nextElementSibling (which fails when two <th>s are
-    // adjacent or when th and td are in different rows).
+    // Build key→value map covering all three table layouts used by SUUMO:
+    //   Layout 1 — same row: <tr><th>A</th><td>a</td><th>B</th><td>b</td></tr>
+    //   Layout 2 — header/data rows: <tr><th>A</th><th>B</th></tr><tr><td>a</td><td>b</td></tr>
+    //   Layout 3 — definition lists: <dt>A</dt><dd>a</dd>
     const rows = {};
 
+    function add(key, val) {
+        if (key && val) rows[key] = val.replace(/\\s*地図\\s*.*$/, '').trim().replace(/\\s+/g, ' ');
+    }
+
+    // Layout 1: same-row th/td pairs — pair ths[i] → tds[i] within each tr
     for (const tr of document.querySelectorAll('tr')) {
         const ths = Array.from(tr.querySelectorAll('th'));
         const tds = Array.from(tr.querySelectorAll('td'));
         if (ths.length > 0 && tds.length > 0) {
             ths.forEach((th, i) => {
-                const key = th.innerText.trim().replace(/\\s+/g, ' ');
-                if (key && tds[i]) rows[key] = tds[i].innerText.trim().replace(/\\s+/g, ' ');
+                if (tds[i]) add(th.innerText.trim().replace(/\\s+/g, ' '),
+                                tds[i].innerText.trim().replace(/\\s+/g, ' '));
             });
         }
     }
 
+    // Layout 2: header-row then data-row (SUUMO summary tables use this)
+    for (const table of document.querySelectorAll('table')) {
+        const trs = Array.from(table.rows);
+        for (let i = 0; i + 1 < trs.length; i++) {
+            const heads = Array.from(trs[i].querySelectorAll('th'));
+            if (heads.length === 0 || trs[i].querySelector('td')) continue; // not a pure header row
+            const vals = Array.from(trs[i + 1].querySelectorAll('td'));
+            if (vals.length >= heads.length) {
+                heads.forEach((th, j) => add(
+                    th.innerText.trim().replace(/\\s+/g, ' '),
+                    vals[j].innerText.trim().replace(/\\s+/g, ' ')
+                ));
+            }
+        }
+    }
+
+    // Layout 3: dl/dt/dd
     for (const dt of document.querySelectorAll('dt')) {
         const key = dt.innerText.trim().replace(/\\s+/g, ' ');
         if (!key) continue;
         let dd = dt.nextElementSibling;
         while (dd && dd.tagName !== 'DD') dd = dd.nextElementSibling;
-        if (dd) rows[key] = dd.innerText.trim().replace(/\\s+/g, ' ');
+        if (dd) add(key, dd.innerText.trim().replace(/\\s+/g, ' '));
     }
 
     // Title (h1 or property-title element)
@@ -351,8 +373,9 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     surroundings = json.dumps(surr_list, ensure_ascii=False) if surr_list else ""
 
     # ---- Agent/realtor (public mandatory disclosure) ----
-    agent_company = (rows.get("会社名") or rows.get("不動産会社") or
-                     rows.get("取扱不動産会社") or "")[:100]
+    agent_company = (rows.get("会社名") or rows.get("不動産会社名") or
+                     rows.get("不動産会社") or rows.get("取扱不動産会社") or
+                     rows.get("取扱会社") or "")[:100]
     agent_license = rows.get("免許番号", "")[:60]
 
     # ---- Images ----

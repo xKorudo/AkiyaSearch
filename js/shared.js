@@ -224,14 +224,26 @@ function convPriceShort(jpy) {
   return sym + Math.round(v);
 }
 
-// Google Maps link — coordinates if available, otherwise Japanese title (contains full address)
+// Google Maps link — always prefer address text over approximate centroid coordinates
 function gmapsUrl(l) {
+  const city = (l.city || '').trim();
+  const pref = (l.prefecture || '').trim();
+  if (city) {
+    // Reconstruct full Japanese address with correct prefecture suffix
+    let prefFull = pref;
+    if (pref === '東京') prefFull = '東京都';
+    else if (pref === '大阪' || pref === '京都') prefFull = pref + '府';
+    else if (pref !== '北海道' && pref) prefFull = pref + '県';
+    const q = encodeURIComponent(`${prefFull}${city} 日本`.trim());
+    return `https://www.google.com/maps/search/?api=1&query=${q}`;
+  }
+  // No city — fall back to approximate coordinates if available
   if (l.lat && l.lng) {
     return `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}`;
   }
-  // Japanese titles from SUUMO/LIFULL contain the full scraped address; Akiya2 titles are English
+  // Last resort: use Japanese title (SUUMO/LIFULL titles contain the full scraped address)
   const hasJpTitle = l.title && /[　-鿿]/.test(l.title);
-  const addr = hasJpTitle ? l.title : `${l.prefecture||''}${l.city||''}`;
+  const addr = hasJpTitle ? l.title : pref;
   const q = encodeURIComponent(`${addr} 日本`.trim());
   return `https://www.google.com/maps/search/?api=1&query=${q}`;
 }
