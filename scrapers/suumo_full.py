@@ -14,6 +14,7 @@ each run (100-200 listings) continues where the previous one stopped.
 Usage:
     python scrapers/suumo_full.py [--limit 150] [--pref 東京]
 """
+import os
 import sys
 import re
 import json
