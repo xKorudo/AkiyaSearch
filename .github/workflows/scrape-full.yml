@@ -14,8 +14,11 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: "Max listings per run"
+        description: "Max listings per prefecture"
         default: "150"
+      max_total:
+        description: "Hard cap on total listings across all prefectures (0 = unlimited)"
+        default: "0"
       pref:
         description: "Optional: single prefecture (e.g. 東京)"
         default: ""
@@ -60,12 +63,11 @@ jobs:
       - name: Run full detail scraper
         run: |
           LIMIT="${{ github.event.inputs.limit || '150' }}"
+          MAX_TOTAL="${{ github.event.inputs.max_total || '0' }}"
           PREF="${{ github.event.inputs.pref || '' }}"
-          if [ -n "$PREF" ]; then
-            python scrapers/suumo_full.py --limit "$LIMIT" --pref "$PREF"
-          else
-            python scrapers/suumo_full.py --limit "$LIMIT"
-          fi
+          ARGS="--limit $LIMIT --max-total $MAX_TOTAL"
+          [ -n "$PREF" ] && ARGS="$ARGS --pref $PREF"
+          python scrapers/suumo_full.py $ARGS
 
       - name: Build static snapshot
         run: python export_static.py

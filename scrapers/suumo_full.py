@@ -404,14 +404,16 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=150,
-                        help="Max listings to process this run (default 150)")
+                        help="Max listings per prefecture per run (default 150)")
+    parser.add_argument("--max-total", type=int, default=0,
+                        help="Hard cap on total listings this run across all prefectures "
+                             "(0 = unlimited, default). Useful for quick tests.")
     parser.add_argument("--pref",  type=str, default=None,
                         help="Only scrape this prefecture (Japanese name, e.g. 東京)")
     args = parser.parse_args()
 
     init_db()
 
-    # Pick which prefectures to work on
     targets = [(p, q) for p, q in PREFECTURES if args.pref is None or p == args.pref]
     if not targets:
         print(f"Unknown prefecture: {args.pref}")
@@ -430,30 +432,34 @@ def main():
         pw_page = ctx.new_page()
 
         total_saved = 0
-        consecutive_blocks = 0
+        consecutive_blocks = 0  # counts consecutive blocked prefectures
 
         for pref_jp, params in targets:
-            if total_saved >= args.limit:
+            # Hard total cap (used for quick tests via --max-total)
+            if args.max_total and total_saved >= args.max_total:
+                print(f"\nReached --max-total {args.max_total} — stopping.", flush=True)
                 break
 
             start_page = _get_cursor(pref_jp)
-            print(f"\n[{pref_jp}] starting from page {start_page}", flush=True)
+            print(f"\n[{pref_jp}] starting from page {start_page} (limit {args.limit}/pref)", flush=True)
 
             pref_saved = 0
             blocked    = False
 
             page_num = start_page
-            while total_saved < args.limit:
+            while pref_saved < args.limit:
+                # Honour hard total cap inside the prefecture loop too
+                if args.max_total and total_saved >= args.max_total:
+                    break
+
                 detail_urls, ok = _fetch_detail_urls(session, params, page_num)
 
                 if not ok:
-                    # Genuinely no more pages for this prefecture
                     print(f"  [{pref_jp}] p{page_num}: no more listings — resetting cursor", flush=True)
                     _set_cursor(pref_jp, 1)
                     break
 
                 if not detail_urls:
-                    # Blocked on list page
                     print(f"  [{pref_jp}] p{page_num}: list-page block", flush=True)
                     blocked = True
                     break
@@ -461,7 +467,9 @@ def main():
                 print(f"  [{pref_jp}] p{page_num}: {len(detail_urls)} URLs", flush=True)
 
                 for url in detail_urls:
-                    if total_saved >= args.limit:
+                    if pref_saved >= args.limit:
+                        break
+                    if args.max_total and total_saved >= args.max_total:
                         break
 
                     listing = _scrape_detail(pw_page, url, pref_jp)
@@ -480,7 +488,7 @@ def main():
                     upsert(listing)
                     total_saved += 1
                     pref_saved  += 1
-                    listed_note = f"  listed={listing.listed_at}" if listing.listed_at else ""
+                    listed_note  = f"  listed={listing.listed_at}" if listing.listed_at else ""
                     traffic_note = "✓" if listing.traffic else "—"
                     extras = sum([
                         bool(listing.building_structure), bool(listing.zoning),
@@ -488,8 +496,10 @@ def main():
                         bool(listing.agent_company),
                     ])
                     print(
-                        f"    [{total_saved}/{args.limit}] {len(json.loads(listing.images))} imgs"
-                        f"  traffic={traffic_note}  extras={extras}/5{listed_note}  {url[-40:]}",
+                        f"    [{pref_saved}/{args.limit} pref | {total_saved} total]"
+                        f"  {len(json.loads(listing.images))} imgs"
+                        f"  traffic={traffic_note}  extras={extras}/5{listed_note}"
+                        f"  {url[-40:]}",
                         flush=True
                     )
                     time.sleep(random.uniform(3, 6))
@@ -512,7 +522,7 @@ def main():
 
         browser.close()
 
-    print(f"\nDONE — {total_saved} complete listings saved", flush=True)
+    print(f"\nDONE — {total_saved} total listings saved this run", flush=True)
     return total_saved
 
 
