@@ -1,0 +1,177 @@
+name: Full scrape — matrix (all prefectures in parallel)
+
+# Runs suumo_full.py for every prefecture simultaneously (max 6 at once to
+# avoid sharing a throttled IP).  Each job writes its own SQLite DB, uploads
+# it as an artifact, then a final "merge + deploy" job combines everything and
+# pushes to Cloudflare Pages.
+#
+# Per-prefecture caches accumulate between runs so the next_update skip logic
+# keeps jobs fast once initial coverage is built.
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # daily at 02:00 UTC
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max listings per prefecture"
+        default: "150"
+
+concurrency:
+  group: akiya-matrix
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── Per-prefecture scrape ────────────────────────────────────────────────
+  scrape:
+    name: "Scrape ${{ matrix.pref }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 6       # stay under 6 simultaneous datacenter IPs
+      matrix:
+        pref:
+          - 北海道
+          - 青森
+          - 岩手
+          - 宮城
+          - 秋田
+          - 山形
+          - 福島
+          - 茨城
+          - 栃木
+          - 群馬
+          - 埼玉
+          - 千葉
+          - 東京
+          - 神奈川
+          - 新潟
+          - 富山
+          - 石川
+          - 福井
+          - 山梨
+          - 長野
+          - 岐阜
+          - 静岡
+          - 愛知
+          - 三重
+          - 滋賀
+          - 京都
+          - 大阪
+          - 兵庫
+          - 奈良
+          - 和歌山
+          - 鳥取
+          - 島根
+          - 岡山
+          - 広島
+          - 山口
+          - 徳島
+          - 香川
+          - 愛媛
+          - 高知
+          - 福岡
+          - 佐賀
+          - 長崎
+          - 熊本
+          - 大分
+          - 宮崎
+          - 鹿児島
+          - 沖縄
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      # Per-prefecture cache so coverage accumulates between runs
+      - name: Restore prefecture DB
+        uses: actions/cache@v4
+        with:
+          path: akiya_v4.db
+          key: akiya-matrix-${{ matrix.pref }}-db1-${{ github.run_id }}
+          restore-keys: |
+            akiya-matrix-${{ matrix.pref }}-db1-
+
+      - name: Scrape ${{ matrix.pref }}
+        run: |
+          python scrapers/suumo_full.py \
+            --limit "${{ github.event.inputs.limit || '150' }}" \
+            --pref "${{ matrix.pref }}"
+
+      - name: Upload prefecture DB
+        if: always()   # upload even on partial block so we don't lose scraped rows
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-${{ matrix.pref }}
+          path: akiya_v4.db
+          retention-days: 1
+          if-no-files-found: ignore
+
+  # ── Merge all prefecture DBs + deploy ───────────────────────────────────
+  deploy:
+    name: Merge & Deploy
+    needs: scrape
+    if: ${{ !cancelled() }}   # run even if some prefecture jobs failed/were skipped
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Restore the master DB so export_static.py can merge with Supabase data
+      - name: Restore master DB
+        uses: actions/cache@v4
+        with:
+          path: |
+            akiya_v4.db
+            geocache.json
+          key: akiya-matrix-master-db1-${{ github.run_id }}
+          restore-keys: |
+            akiya-matrix-master-db1-
+
+      - name: Download all prefecture DBs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: db-*
+          path: pref_dbs/
+
+      - name: Merge prefecture DBs into master
+        run: python scripts/merge_dbs.py pref_dbs/
+
+      - name: Geocode listings to real towns
+        run: python enrich_geo.py
+        continue-on-error: true
+
+      - name: Build static snapshot
+        run: python export_static.py
+        env:
+          ALLOW_SHRINK: "1"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public --project-name=akiya-finder --branch main
