@@ -76,6 +76,13 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
     </div>
   </div>
 
+  <div class="card" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <button class="btn danger" onclick="dismissAll()">Dismiss all — keep listings live</button>
+      <span id="dismiss-all-status" style="font-size:12px;color:var(--text2);font-family:var(--mono)"></span>
+    </div>
+  </div>
+
   <div id="reviews"><div class="empty">Loading…</div></div>
 </div>
 
@@ -228,6 +235,19 @@ async function _resolveReview(reviewId, status) {
 
 async function dismiss(reviewId) {
   if (await _resolveReview(reviewId, 'dismissed')) showToast('Dismissed — not a duplicate');
+}
+
+async function dismissAll() {
+  const status = document.getElementById('dismiss-all-status');
+  if (!confirm('Dismiss all pending reviews? Listings stay live.')) return;
+  status.textContent = 'Working…';
+  const { error } = await supa.from('pending_reviews')
+    .update({ status: 'dismissed', decided_at: new Date().toISOString(), decided_by: currentUser?.id })
+    .eq('status', 'pending');
+  if (error) { status.textContent = '⚠ ' + error.message; showToast('⚠ ' + error.message); return; }
+  status.textContent = 'Done';
+  document.getElementById('reviews').innerHTML = '<div class="empty">No pending reviews 🎉</div>';
+  showToast('All reviews dismissed — listings unchanged');
 }
 
 async function hideOne(listingId, reviewId) {
