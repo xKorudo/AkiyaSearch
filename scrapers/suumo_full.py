@@ -187,26 +187,52 @@ _HANDOVER_PATTERNS = [
 _MONTH_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 _ERA_BASE2 = {"明治": 1868, "大正": 1912, "昭和": 1926, "平成": 1989, "令和": 2019}
 
+# Full-width digits / letters → half-width (SUUMO uses ０１２… in many fields)
+_FW_TABLE = str.maketrans("０１２３４５６７８９（）", "0123456789()")
+
+def _to_hw(s: str) -> str:
+    return s.translate(_FW_TABLE)
+
 
 def _translate_structure(s: str) -> str:
     if not s or sum(1 for c in s if ord(c) > 127) < 2:
         return s
-    result = s
+    result = _to_hw(s)
     for jp, en in _STRUCTURE_SUBS:
         result = result.replace(jp, en)
-    result = re.sub(r"(\d+)階建", lambda m: m.group(1) + "-story", result)
+    # "地上N階建(て)" and "地上N階" → "N-story"
+    result = re.sub(r"地上(\d+)階建て?", lambda m: m.group(1) + "-story", result)
+    result = re.sub(r"地上(\d+)階",     lambda m: m.group(1) + "-story", result)
+    # "N階建(て)" → "N-story"
+    result = re.sub(r"(\d+)階建て?",    lambda m: m.group(1) + "-story", result)
+    # strip any remaining 地上/地下 that weren't caught above
+    result = result.replace("地上", "").replace("地下", "")
     return result.strip(", ").strip()
 
 
 def _translate_zoning(s: str) -> str:
     if not s or sum(1 for c in s if ord(c) > 127) < 2:
         return s
-    # Replace longest matches first
-    result = s
+    # Normalise full-width digits before lookup
+    result = _to_hw(s)
     for jp, en in sorted(_ZONING_MAP.items(), key=lambda x: -len(x[0])):
         result = result.replace(jp, en)
     result = result.replace("/", " / ").replace("・", " / ")
     return result
+
+
+def _translate_license(s: str) -> str:
+    """国土交通大臣（1）第009996号 → MLIT License No. 009996 (Renewal 1)"""
+    if not s or sum(1 for c in s if ord(c) > 127) < 2:
+        return s
+    s = _to_hw(s)
+    m = re.search(r"国土交通大臣[（(](\d+)[）)]\s*第(\d+)号", s)
+    if m:
+        return f"MLIT License No. {m.group(2)} (Renewal {m.group(1)})"
+    m2 = re.search(r"(.{2,5}知事)[（(](\d+)[）)]\s*第(\d+)号", s)
+    if m2:
+        return f"Governor License No. {m2.group(3)} (Renewal {m2.group(2)})"
+    return s
 
 
 def _translate_handover(s: str) -> str:
@@ -520,7 +546,19 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
                 break
 
     # ---- Traffic ----
-    traffic = rows.get("交通", "")[:400]
+    # Strip SUUMO's inline "乗り換え案内" link text, then translate each line.
+    _traffic_raw = rows.get("交通", "")
+    _traffic_lines = []
+    for _tl in _traffic_raw.split("\n"):
+        _tl = re.sub(r"[\[［]?\s*乗り換え案内\s*[\]］]?", "", _tl).strip()
+        if not _tl:
+            continue
+        try:
+            _tl = translate(_tl) or _tl
+        except Exception:
+            pass
+        _traffic_lines.append(_tl)
+    traffic = "\n".join(_traffic_lines)[:400]
 
     # ---- Rooms ----
     rooms = rows.get("間取り", "")[:15]
@@ -573,8 +611,9 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
     # ---- Agent/realtor (public mandatory disclosure) ----
     agent_company = (rows.get("会社名") or rows.get("不動産会社名") or
                      rows.get("不動産会社") or rows.get("取扱不動産会社") or
-                     rows.get("取扱会社") or "")[:100]
-    agent_license = rows.get("免許番号", "")[:60]
+                     rows.get("取扱会社") or rows.get("商号") or
+                     rows.get("業者名") or rows.get("媒介業者") or "")[:100]
+    agent_license = _translate_license(rows.get("免許番号", "")[:60])
 
     # ---- Images ----
     m_id = re.search(r"nc_(\d+)", url)
