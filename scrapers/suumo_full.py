@@ -648,8 +648,14 @@ def _scrape_detail(pw_page, url: str, pref_jp: str):
         "バルコニー",
     ]:
         _v = rows.get(_k, "")
-        if _v and not any(_n in _v for _n in _SUUMO_NOISE):
-            features_dict[_k] = _v
+        if not _v or any(_n in _v for _n in _SUUMO_NOISE):
+            continue
+        if sum(1 for c in _v if ord(c) > 127) >= 2:
+            try:
+                _v = translate(_v) or _v
+            except Exception:
+                pass
+        features_dict[_k] = _v
     features = json.dumps(features_dict, ensure_ascii=False) if features_dict else ""
 
     # ---- Surroundings / nearby facilities (all categories + parsed distance) ----
