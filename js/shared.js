@@ -1037,9 +1037,8 @@ function cardHTML(l) {
       <button class="report-flag" onclick="event.stopPropagation();event.preventDefault();openReport('${l.id}')" title="Report a problem (sold, duplicate, wrong data…)">⚑</button>
     </div>
     <div class="lcard-body">
+      <div class="lcard-title" onclick="event.stopPropagation();event.preventDefault();this.classList.toggle('expanded')">${l.title_en || l.city || l.title}</div>
       <div class="lcard-location">${prefEN}${l.city ? ' · '+l.city : ''}</div>
-      <div class="lcard-title" onclick="event.stopPropagation();event.preventDefault();this.classList.toggle('expanded')">${l.title_en || l.title}</div>
-      ${l.title_en ? `<div style="font-size:10px;color:var(--text3);font-family:var(--jp);margin-bottom:4px">${l.title}</div>` : ''}
       <div class="lcard-price-row">${fmtJPY(l.price_jpy)}</div>
       <div class="lcard-specs">${specs}</div>
       ${l.traffic ? `<div class="lcard-traffic">🚉 ${l.traffic.split('\n')[0].slice(0, 80)}</div>` : ''}
