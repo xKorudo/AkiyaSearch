@@ -1,7 +1,9 @@
 name: Deploy Fresh
 
-# Deploys ONLY what was scraped in a given matrix run.
-# No old cache is restored, no live-data merge — pure fresh data.
+# Deploys the accumulated master DB merged with a specific matrix run's artifacts.
+# Restores the master cache (full historical data) then overlays the fresh
+# per-prefecture DBs from a given matrix run, so the deployed count never
+# drops below what was already accumulated.
 #
 # Usage:
 #   Trigger manually. Leave run_id blank to use the latest matrix run.
@@ -34,13 +36,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # Geocache only — no master DB cache, so no old listings can slip in
-      - name: Restore geocache
+      # Restore master DB + geocache so accumulated history is preserved
+      - name: Restore master DB
         uses: actions/cache@v4
         with:
-          path: geocache.json
-          key: geocache-${{ github.run_id }}
-          restore-keys: geocache-
+          path: |
+            akiya_v4.db
+            geocache.json
+          key: akiya-matrix-master-db1-${{ github.run_id }}
+          restore-keys: |
+            akiya-matrix-master-db1-
 
       - name: Resolve matrix run ID
         id: run
