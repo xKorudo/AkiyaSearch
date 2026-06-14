@@ -205,8 +205,8 @@ const SOURCE_LABELS = { 'SUUMO': '🏠 SUUMO', 'LIFULL Akiya Bank': '🏚 LIFULL
 // Convert a JPY price into the user's chosen display currency (string).
 function convPrice(jpy) {
   if (jpy == null) return '';
-  if (userCurrency === 'JPY') return '¥' + Math.round(jpy).toLocaleString('de-DE');
-  return CUR_SYMBOL[userCurrency] + Math.round(jpy * FX[userCurrency]).toLocaleString('de-DE');
+  if (userCurrency === 'JPY') return '¥' + Math.round(jpy).toLocaleString('en-US');
+  return CUR_SYMBOL[userCurrency] + Math.round(jpy * FX[userCurrency]).toLocaleString('en-US');
 }
 
 // Compact price for map pins, e.g. €30K, €1.2M, FREE (currency-aware)
@@ -977,10 +977,10 @@ async function refreshData() {
 
 // ── FORMATTERS ────────────────────────────────────────────────────────────────
 function fmtYen(jpy) {
-  if (jpy >= 100_000_000) return `¥${(jpy / 100_000_000).toLocaleString('de-DE', {maximumFractionDigits:1})} Mrd.`;
-  if (jpy >= 10_000_000)  return `¥${(jpy / 1_000_000).toLocaleString('de-DE', {maximumFractionDigits:1})} Mio.`;
-  if (jpy >= 1_000_000)   return `¥${(jpy / 1_000_000).toLocaleString('de-DE', {maximumFractionDigits:2})} Mio.`;
-  return `¥${jpy.toLocaleString('de-DE')}`;
+  if (jpy >= 100_000_000) return `¥${(jpy / 100_000_000).toLocaleString('en-US', {maximumFractionDigits:1})}B`;
+  if (jpy >= 10_000_000)  return `¥${(jpy / 1_000_000).toLocaleString('en-US', {maximumFractionDigits:1})}M`;
+  if (jpy >= 1_000_000)   return `¥${(jpy / 1_000_000).toLocaleString('en-US', {maximumFractionDigits:2})}M`;
+  return `¥${jpy.toLocaleString('en-US')}`;
 }
 
 function fmtJPY(jpy) {
@@ -1123,7 +1123,7 @@ function openDetail(id) {
         <span class="dp-price-jpy">${fmtYen(l.price_jpy)}</span>
         ${convNote}
       </div>
-      <div class="dp-price-note">¥${l.price_jpy.toLocaleString('de-DE')}${userCurrency!=='JPY' ? ` · 1¥ = ${CUR_SYMBOL[userCurrency]}${FX[userCurrency].toFixed(4)}` : ''}</div>`;
+      <div class="dp-price-note">¥${l.price_jpy.toLocaleString('en-US')}${userCurrency!=='JPY' ? ` · 1¥ = ${CUR_SYMBOL[userCurrency]}${FX[userCurrency].toFixed(4)}` : ''}</div>`;
   } else {
     priceBlock = `<div style="font-family:var(--mono);font-size:13px;color:var(--text3)">Price on request — 要問合せ</div>`;
   }
@@ -1153,9 +1153,9 @@ function openDetail(id) {
           <input class="yen-calc-input" type="number" id="calc-input-${l.id}" value="${yen}" oninput="updateInlineCalc('${l.id}')">
         </div>
         <div class="yen-calc-result" id="calc-result-${l.id}">
-          <div class="yen-calc-result-row"><span class="yen-calc-result-label">EUR €</span><span class="yen-calc-result-val">€${eur.toLocaleString('de-DE')}</span></div>
-          <div class="yen-calc-result-row"><span class="yen-calc-result-label">USD $</span><span class="yen-calc-result-val">$${usd.toLocaleString()}</span></div>
-          <div class="yen-calc-result-row"><span class="yen-calc-result-label">GBP £</span><span class="yen-calc-result-val">£${gbp.toLocaleString()}</span></div>
+          <div class="yen-calc-result-row"><span class="yen-calc-result-label">EUR €</span><span class="yen-calc-result-val">€${eur.toLocaleString('en-US')}</span></div>
+          <div class="yen-calc-result-row"><span class="yen-calc-result-label">USD $</span><span class="yen-calc-result-val">$${usd.toLocaleString('en-US')}</span></div>
+          <div class="yen-calc-result-row"><span class="yen-calc-result-label">GBP £</span><span class="yen-calc-result-val">£${gbp.toLocaleString('en-US')}</span></div>
         </div>
         <div class="yen-calc-note">+ Renovation budget: ~€${reno_low.toLocaleString()}–€${reno_high.toLocaleString()} typical for akiya</div>
       </div>`;
@@ -1296,9 +1296,9 @@ function updateInlineCalc(id) {
   const usd = Math.round(yen * FX.USD);
   const gbp = Math.round(yen * FX.GBP);
   res.innerHTML = `
-    <div class="yen-calc-result-row"><span class="yen-calc-result-label">EUR €</span><span class="yen-calc-result-val">€${eur.toLocaleString('de-DE')}</span></div>
-    <div class="yen-calc-result-row"><span class="yen-calc-result-label">USD $</span><span class="yen-calc-result-val">$${usd.toLocaleString()}</span></div>
-    <div class="yen-calc-result-row"><span class="yen-calc-result-label">GBP £</span><span class="yen-calc-result-val">£${gbp.toLocaleString()}</span></div>`;
+    <div class="yen-calc-result-row"><span class="yen-calc-result-label">EUR €</span><span class="yen-calc-result-val">€${eur.toLocaleString('en-US')}</span></div>
+    <div class="yen-calc-result-row"><span class="yen-calc-result-label">USD $</span><span class="yen-calc-result-val">$${usd.toLocaleString('en-US')}</span></div>
+    <div class="yen-calc-result-row"><span class="yen-calc-result-label">GBP £</span><span class="yen-calc-result-val">£${gbp.toLocaleString('en-US')}</span></div>`;
 }
 
 function closeDetail() {
@@ -1358,7 +1358,7 @@ function updateYenPanel() {
   const usdEl = document.getElementById('yr-usd');
   const gbpEl = document.getElementById('yr-gbp');
   const audEl = document.getElementById('yr-aud');
-  if (eurEl) eurEl.textContent = '€' + Math.round(yen * FX.EUR).toLocaleString('de-DE');
+  if (eurEl) eurEl.textContent = '€' + Math.round(yen * FX.EUR).toLocaleString('en-US');
   if (usdEl) usdEl.textContent = '$' + Math.round(yen * FX.USD).toLocaleString();
   if (gbpEl) gbpEl.textContent = '£' + Math.round(yen * FX.GBP).toLocaleString();
   if (audEl) audEl.textContent = 'A$' + Math.round(yen * FX.AUD).toLocaleString();
