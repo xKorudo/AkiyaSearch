@@ -216,23 +216,29 @@ async function fetchTopViews() {
 
 async function loadLanding() {
   try {
-    // Use the same chunked source as Search: listings-0.json carries the true
-    // total `count`; load all chunks for the sample/prefecture/hot sections.
-    const r0 = await fetch('./listings-0.json');
-    if (!r0.ok) return;
-    const d0 = await r0.json();
-    const total = d0.count != null ? d0.count : (d0.listings || []).length;
-    let all = (d0.listings || []);
-    const nChunks = d0.chunks || 1;
-    for (let i = 1; i < nChunks; i++) {
-      try { const ri = await fetch(`./listings-${i}.json`); if (ri.ok) all = all.concat((await ri.json()).listings || []); } catch {}
+    // Tiny landing payload: meta.json carries the true total `count`, the
+    // per-prefecture counts and a small image sample — no need to download the
+    // whole dataset (which the browse pages now stream lazily as slim chunks).
+    let total, pref_counts, samples;
+    const rm = await fetch('./meta.json').then(r => r.ok ? r.json() : null).catch(() => null);
+    if (rm) {
+      total = rm.count; pref_counts = rm.pref_counts || {}; samples = (rm.samples || []);
+    } else {
+      // Fallback for older deployments without meta.json.
+      const r0 = await fetch('./listings-0.json'); if (!r0.ok) return;
+      const d0 = await r0.json();
+      total = d0.count != null ? d0.count : (d0.listings || []).length;
+      let all = (d0.listings || []); const nChunks = d0.chunks || 1;
+      for (let i = 1; i < nChunks; i++) { try { const ri = await fetch(`./listings-${i}.json`); if (ri.ok) all = all.concat((await ri.json()).listings || []); } catch {} }
+      const ls = all.filter(l => l.source !== 'AKIYA BANK');
+      pref_counts = {}; ls.forEach(l => { if (l.prefecture) pref_counts[l.prefecture] = (pref_counts[l.prefecture] || 0) + 1; });
+      samples = ls.filter(l => l.image_url);
     }
-    const listings = all.filter(l => l.source !== 'AKIYA BANK');
     document.getElementById('stat-count').textContent = total.toLocaleString();
 
-    renderTopPrefectures(listings);   // top prefectures by akiya count (with outline icons)
+    renderTopPrefectures(pref_counts);   // top prefectures by akiya count (with outline icons)
 
-    const withImg = listings.filter(l => l.image_url);
+    const withImg = samples.filter(l => l.image_url);
 
     // Prefer "current hot picks" (most-viewed). Fall back to a random sample
     // when we don't have enough view data yet.
@@ -304,11 +310,9 @@ function prefOutlineSVG(feature, size = 44) {
 }
 
 // ── Top prefectures by akiya count ────────────────────────────────────────────
-async function renderTopPrefectures(listings) {
+async function renderTopPrefectures(counts) {
   const grid = document.getElementById('topref-grid');
   if (!grid) return;
-  const counts = {};
-  listings.forEach(l => { if (l.prefecture) counts[l.prefecture] = (counts[l.prefecture] || 0) + 1; });
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6);
   if (!top.length) { grid.innerHTML = ''; return; }
   const geo = await getPrefGeo();

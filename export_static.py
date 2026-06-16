@@ -124,8 +124,20 @@ def main():
     with open(os.path.join(OUT, "listing-meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, separators=(",", ":"))
 
-    # Write chunks — each under CHUNK_SIZE listings so no file exceeds CF's 25 MiB limit
-    chunks = [listings[i:i + CHUNK_SIZE] for i in range(0, max(len(listings), 1), CHUNK_SIZE)]
+    # ── FULL chunks (everything) — used only for on-demand hydration ──────────
+    # These carry the heavy fields (image galleries, `features`/detail tables).
+    # Browse views never download them; they're fetched one chunk at a time when
+    # a user opens a listing's gallery/detail. Byte-budgeted so no file exceeds
+    # Cloudflare Pages' 25 MiB limit even as records grow.
+    FULL_BUDGET = 8_000_000   # ~8 MB raw per full chunk
+    chunks, cur, cur_bytes = [], [], 0
+    for l in listings:
+        b = len(json.dumps(l, ensure_ascii=False).encode("utf-8")) + 1
+        if cur and cur_bytes + b > FULL_BUDGET:
+            chunks.append(cur); cur, cur_bytes = [], 0
+        cur.append(l); cur_bytes += b
+    if cur or not chunks:
+        chunks.append(cur)
     n = len(chunks)
     for idx, chunk in enumerate(chunks):
         data = {"listings": chunk}
@@ -134,6 +146,68 @@ def main():
             data["chunks"] = n
         with open(os.path.join(OUT, f"listings-{idx}.json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)
+
+    # id -> full-chunk index, so listing.html / hydration fetch exactly one chunk.
+    id_chunk = {l["id"]: idx for idx, chunk in enumerate(chunks) for l in chunk if l.get("id")}
+    with open(os.path.join(OUT, "ids.json"), "w", encoding="utf-8") as f:
+        json.dump({"chunks": [[l["id"] for l in chunk if l.get("id")] for chunk in chunks]},
+                  f, ensure_ascii=False, separators=(",", ":"))
+
+    # ── SLIM browse payload (whitelist) ──────────────────────────────────────
+    # Browse views (search/map/discover/landing) only need these light fields.
+    # Galleries and detail tables (~70% of the JSON) are hydrated on demand via
+    # the record's `c` (its full-chunk index). This is the main perf win: the
+    # browse download shrinks ~8x and the first chunk paints immediately.
+    SLIM_FIELDS = ["id", "title", "title_en", "prefecture", "city", "price_jpy",
+                   "price_label", "size_m2", "land_m2", "rooms", "built_year",
+                   "condition", "image_url", "source", "source_url", "lat", "lng",
+                   "first_seen", "description", "description_en", "traffic"]
+
+    def _slim(l):
+        s = {}
+        for k in SLIM_FIELDS:
+            v = l.get(k)
+            if v not in (None, "", []):
+                s[k] = v
+        if isinstance(s.get("traffic"), str) and len(s["traffic"]) > 120:
+            s["traffic"] = s["traffic"][:120]
+        s["c"] = id_chunk.get(l["id"], 0)          # full-chunk index for hydration
+        s["ni"] = len(l.get("images") or [])       # gallery image count (for thumbnails UI)
+        return s
+
+    SLIM_BUDGET = 8_000_000
+    slim_chunks, cur, cur_bytes = [], [], 0
+    for l in listings:
+        s = _slim(l)
+        b = len(json.dumps(s, ensure_ascii=False).encode("utf-8")) + 1
+        if cur and cur_bytes + b > SLIM_BUDGET:
+            slim_chunks.append(cur); cur, cur_bytes = [], 0
+        cur.append(s); cur_bytes += b
+    if cur or not slim_chunks:
+        slim_chunks.append(cur)
+    sn = len(slim_chunks)
+    for idx, chunk in enumerate(slim_chunks):
+        data = {"listings": chunk}
+        if idx == 0:
+            data["count"] = len(listings)
+            data["chunks"] = sn
+        with open(os.path.join(OUT, f"listings-slim-{idx}.json"), "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
+
+    # ── meta.json — tiny landing payload (count + per-prefecture counts + samples)
+    # so the landing page no longer downloads the whole dataset for 5 cards.
+    pref_counts = {}
+    for l in listings:
+        p = l.get("prefecture")
+        if p:
+            pref_counts[p] = pref_counts.get(p, 0) + 1
+    import random as _random
+    with_img = [l for l in listings if l.get("image_url")]
+    samples = [_slim(l) for l in _random.sample(with_img, min(30, len(with_img)))] if with_img else []
+    with open(os.path.join(OUT, "meta.json"), "w", encoding="utf-8") as f:
+        json.dump({"count": len(listings), "chunks": n, "slim_chunks": sn,
+                   "pref_counts": pref_counts, "samples": samples},
+                  f, ensure_ascii=False, separators=(",", ":"))
 
     for fname in ["manifest.json"]:
         src = os.path.join(ROOT, fname)

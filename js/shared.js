@@ -906,6 +906,53 @@ function _applyListings(listings) {
   ALL.forEach(l => { if (l.price_jpy != null && l.price_jpy > 0 && l.price_jpy < 10000) l.price_jpy = null; });
 }
 
+// Append more listings to ALL (used while streaming slim chunks in the bg).
+function _appendListings(listings) {
+  for (const l of listings) {
+    if (l.source === 'AKIYA BANK') continue;
+    if (l.price_jpy != null && l.price_jpy > 0 && l.price_jpy < 10000) l.price_jpy = null;
+    ALL.push(l);
+  }
+}
+
+// ── ON-DEMAND HYDRATION ───────────────────────────────────────────────────────
+// Browse loads SLIM records (no galleries/detail tables). When a user opens a
+// listing we fetch just its one FULL chunk and merge the heavy fields in place.
+const _fullChunks = {};
+async function _loadFullChunk(c) {
+  if (_fullChunks[c]) return _fullChunks[c];
+  _fullChunks[c] = (async () => {
+    try {
+      const r = await fetch(`./listings-${c}.json`);
+      if (!r.ok) return new Map();
+      const d = await r.json();
+      const m = new Map();
+      for (const l of (d.listings || [])) m.set(l.id, l);
+      return m;
+    } catch { return new Map(); }
+  })();
+  return _fullChunks[c];
+}
+
+async function getFullListing(id) {
+  const l = (ALL.find(x => x.id === id)) || (FILTERED.find(x => x.id === id));
+  if (!l) return null;
+  if (l.images && l.images.length) return l;   // already hydrated (or full source)
+  if (l.c == null) {                            // no full chunk → use the thumbnail
+    if (!l.images) l.images = l.image_url ? [l.image_url] : [];
+    return l;
+  }
+  const m = await _loadFullChunk(l.c);
+  const full = m.get(id);
+  if (full) {
+    for (const k in full) { if (l[k] == null || l[k] === '' ) l[k] = full[k]; }
+    l.images = full.images && full.images.length ? full.images : (l.image_url ? [l.image_url] : []);
+  } else if (!l.images) {
+    l.images = l.image_url ? [l.image_url] : [];
+  }
+  return l;
+}
+
 async function loadListings() {
   setLoading(true);
 
@@ -926,34 +973,45 @@ async function loadListings() {
   } catch { /* fall through */ }
 
   // 2. Chunked static files (Cloudflare Pages)
-  // Start chunk 0 and speculatively chunk 1 simultaneously — eliminates the
-  // waterfall where chunk 1 couldn't begin until chunk 0 was fully parsed.
+  // Prefer the SLIM browse payload (no galleries/detail tables — ~8x smaller).
+  // Paint the FIRST chunk immediately, then stream the rest in the background.
+  // Falls back to the old full-chunk path for deployments without slim files.
   try {
-    const p0 = fetch('./listings-0.json').then(r => r.ok ? r.json() : null).catch(() => null);
-    const p1 = fetch('./listings-1.json').then(r => r.ok ? r.json() : null).catch(() => null);
-    const d0 = await p0;
+    const prefix = ['./listings-slim-', './listings-'];
+    let base = null, d0 = null;
+    for (const p of prefix) {
+      const r = await fetch(`${p}0.json`).then(r => r.ok ? r.json() : null).catch(() => null);
+      if (r) { base = p; d0 = r; break; }
+    }
     if (d0) {
       const nChunks = d0.chunks || 1;
-      let all = d0.listings || [];
-      if (nChunks >= 2) {
-        const d1 = await p1;
-        if (d1) all = all.concat(d1.listings || []);
-      }
-      if (nChunks > 2) {
-        const rest = await Promise.all(
-          Array.from({ length: nChunks - 2 }, (_, i) =>
-            fetch(`./listings-${i + 2}.json`).then(r => r.json()).then(d => d.listings || []).catch(() => [])
-          )
-        );
-        rest.forEach(chunk => { all = all.concat(chunk); });
-      }
-      _applyListings(all);
+
+      // First paint: chunk 0 only.
+      _applyListings(d0.listings || []);
       await applyListingOverrides();
       if (typeof populateSources === 'function') populateSources();
       setLoading(false);
       if (typeof onDataLoaded === 'function') onDataLoaded();
       else if (typeof filter === 'function') filter();
       if (typeof openDeepLink === 'function') openDeepLink();
+
+      // Stream the remaining chunks in parallel, then merge & refresh the view.
+      if (nChunks > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: nChunks - 1 }, (_, i) =>
+            fetch(`${base}${i + 1}.json`).then(r => r.json()).then(d => d.listings || []).catch(() => [])
+          )
+        );
+        let added = false;
+        rest.forEach(chunk => { if (chunk.length) { _appendListings(chunk); added = true; } });
+        if (added) {
+          await applyListingOverrides();
+          if (typeof populateSources === 'function') populateSources();
+          if (typeof refreshActiveView === 'function') refreshActiveView();
+          else if (typeof filter === 'function') filter();
+          if (typeof openDeepLink === 'function') openDeepLink();
+        }
+      }
       return;
     }
   } catch { /* fall through */ }
@@ -1100,12 +1158,14 @@ function openDeepLink() {
 }
 
 // ── DETAIL PANEL ──────────────────────────────────────────────────────────────
-function openDetail(id) {
+async function openDetail(id) {
   const l = FILTERED.find(x => x.id === id) || ALL.find(x => x.id === id);
   if (!l) return;
   selectedId = id;
   bumpView(id);   // count this view toward the 🔥 HOT ranking
   track('listing_open', { id });
+  // Hydrate the gallery/detail fields on demand (browse data is slim).
+  if (typeof getFullListing === 'function') { try { await getFullListing(id); } catch {} }
   document.querySelectorAll('.lcard').forEach(c => c.classList.toggle('selected', c.onclick?.toString().includes(`'${id}'`)));
 
   const ab = calcAirbnb(l);

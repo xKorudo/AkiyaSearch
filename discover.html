@@ -268,7 +268,7 @@ function attachDiscoSwipe() {
   }, { passive: true });
 }
 
-function renderDiscover(keepCurrent) {
+async function renderDiscover(keepCurrent) {
   const el = document.getElementById('discover-view');
   if (!(keepCurrent && discoCurrent)) {
     if (!discoQueue.length) buildDiscoQueue();
@@ -278,6 +278,8 @@ function renderDiscover(keepCurrent) {
     el.innerHTML = `<div class="watch-empty">No more matches right now. Try clearing filters, or come back as new houses arrive.</div>`;
     return;
   }
+  // Hydrate the gallery on demand (browse data is slim).
+  if (typeof getFullListing === 'function') { try { await getFullListing(discoCurrent.id); } catch {} }
   const l = discoCurrent;
   pickedAspects = new Set();   // reset per card
   const total = Object.keys(SWIPES).length;
