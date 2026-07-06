@@ -201,6 +201,7 @@ def main():
         "stats.html",
         "prefectures.html",
         "prefecture.html",
+        "reset-password.html",
     ]
     for fname in static_files:
         src = os.path.join(ROOT, fname)
