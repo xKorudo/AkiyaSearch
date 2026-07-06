@@ -2,6 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+(function(){
+  var h = location.hash, q = location.search;
+  if (!h && !q) return;
+  var p = new URLSearchParams(h.replace(/^#/, ''));
+  var isAuth = (p.get('type') === 'recovery' && p.get('access_token')) ||
+               p.get('error') ||
+               new URLSearchParams(q).get('code');
+  if (isAuth) location.replace('reset-password.html' + q + h);
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
@@ -375,21 +386,6 @@ async function renderJapanMap() {
 }
 renderJapanMap();
 </script>
-<script>
-// Supabase redirects password-recovery emails to the configured redirect URL.
-// If that URL is the site root instead of /reset-password.html, the auth hash
-// lands here. Detect it and forward so reset-password.html can handle it.
-(function(){
-  const h = location.hash;
-  if (!h) return;
-  const p = new URLSearchParams(h.replace(/^#/, ''));
-  const isRecovery = (p.get('type') === 'recovery' && p.get('access_token')) ||
-                     p.get('error') ||
-                     new URLSearchParams(location.search).get('code');
-  if (isRecovery) {
-    location.replace('reset-password.html' + location.search + location.hash);
-  }
-})();
-</script>
+
 </body>
 </html>
