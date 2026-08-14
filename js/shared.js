@@ -572,6 +572,25 @@ async function signOut() {
 // ── WATCHLISTS + NOTIFICATIONS ────────────────────────────────────────────────
 function listingById(id) { return ALL.find(l => l.id === id); }
 
+function isWatched(id) { return WATCHLISTS.some(w => w.items.includes(id)); }
+
+function refreshWatchButtons() {
+  document.querySelectorAll('.watch-btn').forEach(b => {
+    const id = b.dataset.id;
+    const on = isWatched(id);
+    b.classList.toggle('on', on);
+    b.title = on ? 'Watching — click to manage' : 'Add to watchlist';
+  });
+  // detail panel watch button
+  const dpBtn = document.querySelector('.dp-watch-btn');
+  if (dpBtn) {
+    const id = dpBtn.dataset.id;
+    const on = isWatched(id);
+    dpBtn.classList.toggle('on', on);
+    dpBtn.innerHTML = on ? '👁 Watching' : '👁 Watch';
+  }
+}
+
 async function loadWatchlistData() {
   if (!supa || !currentUser) { WATCHLISTS = []; return; }
   try {
@@ -591,6 +610,7 @@ async function loadWatchlistData() {
       memberCount: members.filter(m => m.watchlist_id === w.id).length || 1,
     }));
   } catch (e) { console.warn('watchlist load', e); WATCHLISTS = []; }
+  refreshWatchButtons();
 }
 
 async function acceptPendingInvites() {
@@ -1092,6 +1112,7 @@ function cardHTML(l) {
       ${img}${placeholder}
       <div class="lcard-badges">${badgeHot}${badgeFree}${badgeCheap}${badgeAB}</div>
       <button class="fav-btn ${isFav(l.id)?'on':''}" onclick="event.stopPropagation();event.preventDefault();toggleFav('${l.id}',this)" title="Save to favorites">${isFav(l.id)?'♥':'♡'}</button>
+      <button class="watch-btn ${isWatched(l.id)?'on':''}" data-id="${l.id}" onclick="event.stopPropagation();event.preventDefault();openAddToWatchlist('${l.id}',this)" title="${isWatched(l.id)?'Watching — click to manage':'Add to watchlist'}">👁</button>
       <button class="report-flag" onclick="event.stopPropagation();event.preventDefault();openReport('${l.id}')" title="Report a problem (sold, duplicate, wrong data…)">⚑</button>
     </div>
     <div class="lcard-body">
@@ -1259,7 +1280,7 @@ async function openDetail(id) {
       ${l.title_en ? `<div style="font-family:var(--jp);font-size:12px;color:var(--text3);margin-bottom:12px">${l.title}</div>` : ''}
       <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="dp-fav-btn ${isFav(l.id)?'on':''}" onclick="toggleFav('${l.id}',this)">${isFav(l.id)?'♥ Saved':'♡ Save to favorites'}</button>
-        <button class="dp-fav-btn" onclick="openAddToWatchlist('${l.id}', this)">👁 Watch</button>
+        <button class="dp-fav-btn dp-watch-btn ${isWatched(l.id)?'on':''}" data-id="${l.id}" onclick="openAddToWatchlist('${l.id}', this)">${isWatched(l.id)?'👁 Watching':'👁 Watch'}</button>
       </div>
       <div class="dp-price-block">${priceBlock}</div>
       <div class="dp-specs-grid">${specs}</div>

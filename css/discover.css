@@ -101,6 +101,9 @@ header { height: 52px; background: var(--surface); border-bottom: 1px solid var(
 .fav-btn { position: absolute; bottom: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.6); border: 1px solid var(--border2); color: #fff; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; z-index: 3; }
 .fav-btn:hover { background: rgba(0,0,0,.85); transform: scale(1.1); }
 .fav-btn.on { color: var(--red); border-color: var(--red); }
+.watch-btn { position: absolute; bottom: 8px; right: 46px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.6); border: 1px solid var(--border2); color: #fff; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; z-index: 3; }
+.watch-btn:hover { background: rgba(0,0,0,.85); transform: scale(1.1); }
+.watch-btn.on { color: var(--accent); border-color: var(--accent); }
 
 /* DETAIL PANEL */
 .detail-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 8999; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -163,6 +166,7 @@ header { height: 52px; background: var(--surface); border-bottom: 1px solid var(
 .dp-gallery-main { grid-column: span 3; aspect-ratio: 16/9; border-radius: 4px; }
 .dp-fav-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--r); background: var(--surface2); border: 1px solid var(--border2); color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer; }
 .dp-fav-btn.on { color: var(--red); border-color: var(--red); }
+.dp-watch-btn.on { color: var(--accent); border-color: var(--accent); }
 .atw-menu { position: absolute; z-index: 10000; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; box-shadow: 0 8px 28px rgba(0,0,0,.6); padding: 6px; min-width: 220px; }
 .atw-item { padding: 9px 10px; border-radius: 5px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .atw-item:hover { background: var(--surface2); }
